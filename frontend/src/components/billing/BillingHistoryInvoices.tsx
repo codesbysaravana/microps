@@ -1,11 +1,24 @@
 import React from 'react';
+import type { Invoice } from '../../services/billingService';
 
-export const BillingHistoryInvoices: React.FC = () => {
-  const invoices = [
-    { id: 'INV-2026-007', date: 'July 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
-    { id: 'INV-2026-006', date: 'June 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
-    { id: 'INV-2026-005', date: 'May 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
-  ];
+interface BillingHistoryInvoicesProps {
+  invoices?: Invoice[];
+}
+
+export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ invoices }) => {
+  const displayInvoices = (invoices && invoices.length > 0)
+    ? invoices.map(inv => ({
+        id: inv.invoice_number,
+        date: new Date(inv.created_at).toLocaleDateString() || inv.billing_period,
+        amount: `$${(inv.amount_paid_cents / 100).toFixed(2)}`,
+        status: inv.status,
+        tier: `${inv.billing_period} Allocation`,
+      }))
+    : [
+        { id: 'INV-2026-007', date: 'July 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
+        { id: 'INV-2026-006', date: 'June 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
+        { id: 'INV-2026-005', date: 'May 1, 2026', amount: '$0.00', status: 'Paid', tier: 'Hobby Tier Allocation' },
+      ];
 
   return (
     <div className="space-y-12 max-w-6xl mx-auto mb-16">
@@ -102,7 +115,7 @@ export const BillingHistoryInvoices: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2A2A2A]/60 text-neutral-300">
-              {invoices.map((inv) => (
+              {displayInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-[#1C1B1B]/50 transition-colors">
                   <td className="py-4 px-6 font-bold text-[#F5F5F0]">{inv.id}</td>
                   <td className="py-4 px-6 text-neutral-400">{inv.date}</td>

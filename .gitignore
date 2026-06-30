@@ -266,3 +266,11 @@ cypress/screenshots/
 !.gitkeep
 !.env.example
 !.env.template
+
+############################
+# Markdown Documentation
+############################
+*.md
+!README.md
+!readme.md
+!README.MD

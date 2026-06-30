@@ -24,7 +24,7 @@ export class SubscriptionRepository {
   async logEvent(organizationId: number, subscriptionId: number | null, eventType: string, payload: any): Promise<void> {
     await pool.query(
       'INSERT INTO subscription_events (organization_id, subscription_id, event_type, payload) VALUES ($1, $2, $3, $4)',
-      [organizationId, subscriptionId, JSON.stringify(payload)]
+      [organizationId, subscriptionId, eventType, JSON.stringify(payload)]
     );
   }
 }

@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 
-export const PricingPlansGrid: React.FC = () => {
+interface PricingPlansGridProps {
+  onSelectTier?: (tier: string) => void;
+}
+
+export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier }) => {
   const [buildMinutes, setBuildMinutes] = useState(5000);
   const [bandwidth, setBandwidth] = useState(500);
 
@@ -54,7 +58,7 @@ export const PricingPlansGrid: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => alert('You are currently exploring the free tier.')}
+          onClick={() => onSelectTier ? onSelectTier('FREE') : alert('You are currently exploring the free tier.')}
           className="w-full py-3.5 bg-transparent border border-[#2A2A2A] hover:border-[#D4AF37] text-[#F5F5F0] hover:text-[#D4AF37] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8"
         >
           START FREE
@@ -144,7 +148,7 @@ export const PricingPlansGrid: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => alert(`Upgrading cluster allocation to Pro tier (${buildMinutes.toLocaleString()} min / ${bandwidth.toLocaleString()} GB).`)}
+          onClick={() => onSelectTier ? onSelectTier('PRO') : alert(`Upgrading cluster allocation to Pro tier (${buildMinutes.toLocaleString()} min / ${bandwidth.toLocaleString()} GB).`)}
           className="w-full py-3.5 bg-[#D4AF37] hover:bg-[#e2bd44] text-[#131313] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8 shadow-[0_0_15px_rgba(212,175,55,0.25)] active:scale-[0.99]"
         >
           DEPLOY PRO
@@ -194,7 +198,7 @@ export const PricingPlansGrid: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => alert('Connecting your account to our Enterprise Dedicated Infrastructure team.')}
+          onClick={() => onSelectTier ? onSelectTier('ENTERPRISE') : alert('Connecting your account to our Enterprise Dedicated Infrastructure team.')}
           className="w-full py-3.5 bg-transparent border border-[#2A2A2A] hover:border-[#D4AF37] text-[#F5F5F0] hover:text-[#D4AF37] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8"
         >
           CONTACT SALES

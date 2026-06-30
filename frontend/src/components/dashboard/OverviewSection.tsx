@@ -4,7 +4,7 @@ export interface OverviewSectionProps {
   onNewDeploy?: () => void;
 }
 
-export const OverviewSection: React.FC<OverviewSectionProps> = ({ onNewDeploy }) => {
+export const OverviewSection: React.FC<OverviewSectionProps> = ({ onNewDeploy: _onNewDeploy }) => {
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300">
       {/* Top Header Row */}

@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { preflightService } from '../services/preflightService';
 import type { PreflightReport } from '../services/preflightService';
 import { buildService } from '../services/buildService';
+import { BASE_URL } from '../lib/api';
 import { ProjectsSection } from '../components/ProjectsSection';
 import { BillingSection } from '../components/billing/BillingSection';
 import { OverviewSection } from '../components/dashboard/OverviewSection';
@@ -63,7 +64,7 @@ export const Dashboard: React.FC = () => {
       setBuildLogs((prev) => [...prev, `Pipeline initialized. Job ID: ${deployResponse.jobId}`]);
 
       const token = useAuthStore.getState().token;
-      const eventSource = new EventSource(`http://localhost:8000/api/v1/build/stream?token=${token}`);
+      const eventSource = new EventSource(`${BASE_URL}/build/stream?token=${token}`);
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);

@@ -1,12 +1,49 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BillingHeader } from './BillingHeader';
 import { CurrentSubscriptionCard } from './CurrentSubscriptionCard';
 import { PricingPlansGrid } from './PricingPlansGrid';
 import { BillingHistoryInvoices } from './BillingHistoryInvoices';
+import { billingService } from '../../services/billingService';
+import type { BillingOverview } from '../../services/billingService';
 
 export const BillingSection: React.FC = () => {
+  const [overview, setOverview] = useState<BillingOverview | null>(null);
+  const [_loading, setLoading] = useState<boolean>(true);
+
+  const fetchOverview = async () => {
+    try {
+      const res = await billingService.getOverview();
+      if (res) {
+        setOverview(res);
+      }
+    } catch (err) {
+      console.error('Failed to fetch billing overview:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOverview();
+  }, []);
+
   const handleScrollToPro = () => {
     window.scrollTo({ top: 400, behavior: 'smooth' });
+  };
+
+  const handleSelectTier = async (tier: string) => {
+    try {
+      setLoading(true);
+      const res = await billingService.upgradePlan(tier);
+      if (res) {
+        setOverview(res);
+        alert(`Successfully upgraded organization plan to ${tier}!`);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error updating subscription tier.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -15,13 +52,13 @@ export const BillingSection: React.FC = () => {
       <BillingHeader />
 
       {/* Authenticated Dashboard Context Card */}
-      <CurrentSubscriptionCard onUpgradeClick={handleScrollToPro} />
+      <CurrentSubscriptionCard overview={overview} onUpgradeClick={handleScrollToPro} />
 
       {/* Visual Source of Truth 3-Tier Grid with Interactive Telemetry Sliders */}
-      <PricingPlansGrid />
+      <PricingPlansGrid onSelectTier={handleSelectTier} />
 
       {/* Payment Instruments & Audit Ledger Table */}
-      <BillingHistoryInvoices />
+      <BillingHistoryInvoices invoices={overview?.invoices} />
     </div>
   );
 };
