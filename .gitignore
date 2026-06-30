@@ -1,0 +1,268 @@
+# =========================================================
+# MicrOps Unified .gitignore
+# Covers:
+# - React / Next.js / Vite
+# - Node.js Backend
+# - TypeScript
+# - Docker
+# - Terraform
+# - AWS
+# - IDEs
+# - Logs
+# =========================================================
+
+############################
+# Dependencies
+############################
+
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+############################
+# Build Outputs
+############################
+
+dist/
+build/
+out/
+coverage/
+.next/
+.nuxt/
+.vercel/
+.vite/
+.cache/
+storybook-static/
+
+############################
+# TypeScript
+############################
+
+*.tsbuildinfo
+
+############################
+# Environment Files
+############################
+
+.env
+.env.*
+!.env.example
+!.env.template
+
+############################
+# Logs
+############################
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+############################
+# Runtime Files
+############################
+
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+############################
+# OS Files
+############################
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+############################
+# IDE
+############################
+
+.vscode/
+.idea/
+
+*.iml
+
+############################
+# Editor Swap Files
+############################
+
+*.swp
+*.swo
+*~
+
+############################
+# Testing
+############################
+
+coverage/
+.nyc_output/
+
+############################
+# Temporary Files
+############################
+
+tmp/
+temp/
+.tmp/
+
+############################
+# Docker
+############################
+
+docker-compose.override.yml
+
+############################
+# Terraform
+############################
+
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+terraform.tfvars.json
+
+############################
+# AWS
+############################
+
+.aws/
+.aws-sam/
+
+############################
+# Kubernetes
+############################
+
+*.kubeconfig
+
+############################
+# Certificates & Keys
+############################
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+############################
+# Secrets
+############################
+
+secrets/
+credentials/
+*.secret
+
+############################
+# Database
+############################
+
+*.sqlite
+*.sqlite3
+*.db
+
+############################
+# Uploads
+############################
+
+uploads/
+storage/
+
+############################
+# Cache
+############################
+
+.eslintcache
+.parcel-cache/
+
+############################
+# Package Managers
+############################
+
+package-lock.json.bak
+yarn.lock.bak
+pnpm-lock.yaml.bak
+
+############################
+# Miscellaneous
+############################
+
+*.tgz
+*.zip
+*.gz
+
+############################
+# Local Development
+############################
+
+.local/
+.localhistory/
+
+############################
+# Generated Files
+############################
+
+generated/
+.codegen/
+
+############################
+# Prisma (Optional)
+############################
+
+prisma/dev.db
+prisma/dev.db-journal
+
+############################
+# Drizzle
+############################
+
+drizzle/meta/_journal.json
+
+############################
+# Turborepo
+############################
+
+.turbo/
+
+############################
+# Playwright
+############################
+
+playwright-report/
+test-results/
+
+############################
+# Cypress
+############################
+
+cypress/videos/
+cypress/screenshots/
+
+############################
+# Misc Build Artifacts
+############################
+
+*.cache
+*.map
+
+############################
+# Keep These
+############################
+
+!.gitkeep
+!.env.example
+!.env.template

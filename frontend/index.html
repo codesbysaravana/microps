@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MicrOps - Cloud Deployment OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            // Centralized MicrOps Theme Tokens
+            "obsidian": "#0B0D10",
+            "obsidian-deep": "#0B0D10",
+            "background": "#0B0D10",
+            "surface": "#12161C",
+            "surface-secondary": "#12161C",
+            "surface-elevated": "#171C23",
+            "surface-variant": "#171C23",
+            "card": "#171C23",
+            "surface-tertiary": "#1F252E",
+            "border-subtle": "#2B313A",
+            "outline-variant": "#2B313A",
+            "outline": "#2B313A",
+            "gold": "#C9982D",
+            "gold-hover": "#D7AA47",
+            "ivory": "#F6F4EF",
+            "on-surface": "#F6F4EF",
+            "text-primary": "#F6F4EF",
+            "text-secondary": "#C7C3BC",
+            "on-surface-variant": "#C7C3BC",
+            "text-muted": "#8D939C",
+            "slate-gray": "#8D939C",
+            "success": "#34C759",
+            "warning": "#F4B740",
+            "error": "#E05A47",
+            "info": "#5E8BFF",
+            "terminal-violet": "#5E8BFF"
+          },
+          fontFamily: {
+            "headline-lg": ["IBM Plex Serif", "serif"],
+            "headline-md": ["IBM Plex Serif", "serif"],
+            "body-lg": ["Inter", "sans-serif"],
+            "body-md": ["Inter", "sans-serif"],
+            "label-mono": ["JetBrains Mono", "monospace"],
+            "label-caps": ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
