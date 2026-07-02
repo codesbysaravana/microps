@@ -9,4 +9,5 @@ interface AuthResponse {
 export const authService = {
   login: (data: LoginInput) => apiClient<AuthResponse>('/auth/login', { method: 'POST', data }),
   signup: (data: SignupInput) => apiClient<any>('/auth/signup', { method: 'POST', data }),
+  updateProfile: (name: string) => apiClient<{ user: { id: number; name: string; email: string } }>('/auth/profile', { method: 'PUT', data: { name } }),
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { projectService, type Project } from '../services/projectService';
+import { Toast, EmptyState } from './ui/primitives';
 
 export interface ProjectsSectionProps {
   onNewProject?: () => void;
@@ -13,7 +14,7 @@ const timeAgo = (dateString: string) => {
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
   } catch {
-    return '2h ago';
+    return 'Recently';
   }
 };
 
@@ -33,13 +34,6 @@ const getProjectIcon = (name: string, index: number) => {
       </svg>
     );
   }
-  if (n.includes('billing') || n.includes('worker') || index === 2) {
-    return (
-      <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    );
-  }
   return (
     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -51,6 +45,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type: 'info' | 'success' | 'error' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editForm, setEditForm] = useState({ branch: '', buildCommand: '', installCommand: '' });
@@ -62,7 +57,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
     try {
       const res = await projectService.getProjects();
       if (res.success) {
-        setProjects(res.projects);
+        setProjects(res.projects || []);
       } else {
         setError('Failed to load projects.');
       }
@@ -93,9 +88,10 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
     try {
       await projectService.updateProject(editingProject.id, editForm);
       setEditingProject(null);
+      setToastMessage({ msg: 'Project configuration updated successfully.', type: 'success' });
       fetchProjects();
     } catch (err: any) {
-      alert(err.message || 'Failed to update project');
+      setToastMessage({ msg: err.message || 'Failed to update project', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -108,8 +104,9 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
     try {
       await projectService.deleteProject(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
+      setToastMessage({ msg: `Project "${name}" deleted.`, type: 'info' });
     } catch (err: any) {
-      alert(err.message || 'Failed to delete project');
+      setToastMessage({ msg: err.message || 'Failed to delete project', type: 'error' });
     }
   };
 
@@ -136,65 +133,25 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
     );
   }
 
-  // Fallback seed projects matching screenshot if backend returned empty
-  const defaultProjects: Project[] = [
-    {
-      id: 882910,
-      user_id: 1,
-      name: 'API Gateway v2',
-      repo_url: 'https://github.com/mrcooper/api-gateway',
-      branch: 'main',
-      language: 'TypeScript',
-      framework: 'Node.js',
-      install_command: 'npm install',
-      build_command: 'npm run build',
-      created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-      liveUrl: 'https://api-gateway.microps.dev'
-    },
-    {
-      id: 449220,
-      user_id: 1,
-      name: 'User Graph DB',
-      repo_url: 'https://github.com/mrcooper/user-graph',
-      branch: 'staging',
-      language: 'Go',
-      framework: 'Gin',
-      install_command: 'go mod download',
-      build_command: 'go build -o server',
-      created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-      liveUrl: 'https://user-graph.microps.dev'
-    },
-    {
-      id: 711290,
-      user_id: 1,
-      name: 'Billing Worker',
-      repo_url: 'https://github.com/mrcooper/billing-worker',
-      branch: 'main',
-      language: 'Python',
-      framework: 'FastAPI',
-      install_command: 'pip install -r requirements.txt',
-      build_command: 'pytest',
-      created_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-      liveUrl: 'https://billing-worker.microps.dev'
-    }
-  ];
-
-  const displayProjects = projects.length > 0 ? projects : defaultProjects;
-  const filteredProjects = displayProjects.filter((p) =>
+  const filteredProjects = projects.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.repo_url?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-300">
-      {/* Visual Header Section matching screenshot */}
+      {toastMessage && (
+        <Toast message={toastMessage.msg} type={toastMessage.type} onDismiss={() => setToastMessage(null)} />
+      )}
+
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border-subtle/40">
         <div>
           <h1 className="font-headline-md text-3xl sm:text-4xl font-bold text-ivory tracking-tight">
             Projects
           </h1>
           <p className="text-sm sm:text-base text-text-secondary mt-1 font-body-md">
-            Manage your distributed microservices and infrastructure.
+            Manage your distributed microservices and AWS ECS Fargate workloads.
           </p>
         </div>
 
@@ -213,14 +170,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
             </svg>
           </div>
 
-          {/* Filter Button */}
-          <button className="flex items-center gap-2 px-3.5 py-2 border border-border-subtle rounded-lg bg-surface hover:bg-surface-elevated text-ivory text-xs font-mono transition-colors shrink-0">
-            <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            <span>Filter</span>
-          </button>
-
           {/* New Project Button */}
           <button
             onClick={onNewProject}
@@ -232,113 +181,133 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
         </div>
       </div>
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project, index) => {
-          const isProd = !project.branch || project.branch === 'main' || project.branch === 'production' || project.branch === 'prod';
-          const displayId = `prj-${project.id.toString().slice(0, 6).padEnd(6, 'a')}`;
-          const instancesCount = isProd ? 24 : 8;
-
-          return (
-            <div
-              key={project.id}
-              className="group bg-surface hover:bg-surface-elevated border border-border-subtle hover:border-gold/40 rounded-xl p-6 transition-all duration-300 flex flex-col justify-between shadow-sm min-h-[220px]"
+      {/* Projects Grid or Honest Empty State */}
+      {filteredProjects.length === 0 ? (
+        <EmptyState
+          title={searchQuery ? 'No matching projects found' : 'No projects deployed yet'}
+          description={
+            searchQuery
+              ? 'Try adjusting your search criteria or filter terms.'
+              : 'Connect your GitHub repository and launch your first AWS ECS Fargate microservice.'
+          }
+          action={
+            <button
+              onClick={onNewProject}
+              className="px-4 py-2 bg-gold hover:bg-gold-hover text-obsidian font-mono text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
             >
-              <div>
-                {/* Top Row: Icon + Title + Actions */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-lg bg-obsidian border border-border-subtle flex items-center justify-center text-ivory shrink-0 shadow-inner group-hover:border-gold/30 transition-colors">
-                      {getProjectIcon(project.name, index)}
+              + Launch Microservice
+            </button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project, index) => {
+            const isProd = !project.branch || project.branch === 'main' || project.branch === 'production' || project.branch === 'prod';
+            const displayId = `prj-${project.id.toString().slice(0, 6).padEnd(6, 'a')}`;
+
+            return (
+              <div
+                key={project.id}
+                className="group bg-surface hover:bg-surface-elevated border border-border-subtle hover:border-gold/40 rounded-xl p-6 transition-all duration-300 flex flex-col justify-between shadow-sm min-h-[220px]"
+              >
+                <div>
+                  {/* Top Row: Icon + Title + Actions */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-lg bg-obsidian border border-border-subtle flex items-center justify-center text-ivory shrink-0 shadow-inner group-hover:border-gold/30 transition-colors">
+                        {getProjectIcon(project.name, index)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-headline-md font-semibold text-lg text-ivory truncate group-hover:text-gold transition-colors">
+                          {project.name}
+                        </h3>
+                        <div className="font-mono text-[11px] text-text-muted mt-0.5 truncate">
+                          ID: {displayId}
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-headline-md font-semibold text-lg text-ivory truncate group-hover:text-gold transition-colors">
-                        {project.name}
-                      </h3>
-                      <div className="font-mono text-[11px] text-text-muted mt-0.5 truncate">
-                        ID: {displayId}
+
+                    {/* Subtle Action Buttons */}
+                    <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+                      {project.liveUrl && (
+                        <a
+                          href={project.liveUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open Live Production URL"
+                          className="p-1.5 rounded-lg bg-surface-tertiary hover:bg-gold/20 text-text-secondary hover:text-gold border border-border-subtle transition"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleOpenEdit(project)}
+                        title="Configure Settings"
+                        className="p-1.5 rounded-lg bg-surface-tertiary hover:bg-gold/20 text-text-secondary hover:text-gold border border-border-subtle transition"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(project.id, project.name)}
+                        title="Delete Project"
+                        className="p-1.5 rounded-lg bg-error/10 hover:bg-error/20 text-error/80 hover:text-error border border-error/30 transition"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Middle Row: 2 Columns (Environment & Orchestration) */}
+                  <div className="grid grid-cols-2 gap-4 my-6 py-4 border-y border-border-subtle/50">
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
+                        ENVIRONMENT
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isProd ? 'bg-success shadow-[0_0_6px_#34C759]' : 'bg-info shadow-[0_0_6px_#5E8BFF]'}`}></span>
+                        <span className="text-xs font-mono text-ivory">
+                          {isProd ? 'Production' : 'Staging'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
+                        ORCHESTRATION
+                      </div>
+                      <div className="text-xs font-mono text-ivory">
+                        1 task (Fargate)
                       </div>
                     </div>
                   </div>
-
-                  {/* Subtle Action Buttons */}
-                  <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <a
-                      href={project.liveUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Open Live Production URL"
-                      className="p-1.5 rounded-lg bg-surface-tertiary hover:bg-gold/20 text-text-secondary hover:text-gold border border-border-subtle transition"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    <button
-                      onClick={() => handleOpenEdit(project)}
-                      title="Configure Settings"
-                      className="p-1.5 rounded-lg bg-surface-tertiary hover:bg-gold/20 text-text-secondary hover:text-gold border border-border-subtle transition"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDelete(project.id, project.name)}
-                      title="Delete Project"
-                      className="p-1.5 rounded-lg bg-error/10 hover:bg-error/20 text-error/80 hover:text-error border border-error/30 transition"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
 
-                {/* Middle Row: 2 Columns (Environment & Active Deploys) */}
-                <div className="grid grid-cols-2 gap-4 my-6 py-4 border-y border-border-subtle/50">
-                  <div>
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
-                      ENVIRONMENT
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${isProd ? 'bg-success shadow-[0_0_6px_#34C759]' : 'bg-info shadow-[0_0_6px_#5E8BFF]'}`}></span>
-                      <span className="text-xs font-mono text-ivory">
-                        {isProd ? 'Production' : 'Staging'}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted font-medium mb-1.5">
-                      ACTIVE DEPLOYS
-                    </div>
-                    <div className="text-xs font-mono text-ivory">
-                      {instancesCount} instances
-                    </div>
-                  </div>
+                {/* Bottom Row: Footer */}
+                <div className="flex items-center justify-between font-mono text-xs pt-1">
+                  <span className="text-text-muted text-[11px]">
+                    Last updated {timeAgo(project.created_at)}
+                  </span>
+                  <button
+                    onClick={() => handleOpenEdit(project)}
+                    className="text-gold hover:text-gold-hover font-medium flex items-center gap-1 transition-all group-hover:translate-x-0.5 duration-200"
+                  >
+                    <span>View details</span>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-
-              {/* Bottom Row: Footer */}
-              <div className="flex items-center justify-between font-mono text-xs pt-1">
-                <span className="text-text-muted text-[11px]">
-                  Last deployed {timeAgo(project.created_at)}
-                </span>
-                <button
-                  onClick={() => handleOpenEdit(project)}
-                  className="text-gold hover:text-gold-hover font-medium flex items-center gap-1 transition-all group-hover:translate-x-0.5 duration-200"
-                >
-                  <span>View details</span>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Configuration Modal */}
       {editingProject && (

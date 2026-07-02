@@ -20,7 +20,8 @@ This document is the exhaustive chronological error and debugging log for the li
 | `2026-06-30T16:06:00Z` | End-to-End Live Verification | Live Portfolio Deployment | Node Verification Harness triggering Job ID `8` (`build-1782835599963`) | Complete SSE Telemetry Streaming | Clean PM2 worker processed job, generated modern container build script, dispatched VM Run #21 (`SUCCESS`), and pushed image to ECR. | Monitored full lifecycle to container deployment completion. | Fully Resolved |
 | `2026-06-30T16:09:00Z` | ECS Serverless Container Validation | AWS ECS Fargate | `aws ecs describe-tasks --cluster microps-tenant-cluster --region ap-southeast-2` | Task `a039ae25e3d7474ba618f680125ea643` in `RUNNING` state | Live verification confirmed ECR image `tenant-12-portfolio-build-1782835599963` deployed successfully as a running Fargate task. | Production SaaS pipeline verified end-to-end. | Fully Resolved |
 | `2026-07-01T13:40:00Z` | Autonomous Diagnostic Engine Implementation | Backend & Frontend (`diagnostic.engine.ts`, `Dashboard.tsx`) | `npm run build` across backend & frontend | Build failures dumped unparsed terminal output (`Exit code 1`), requiring manual googling. | Created heuristic root-cause diagnostic engine (`analyzeBuildFailure`), added One-Click Fix API (`POST /api/v1/build/apply-fix`), and rendered glowing UI remediation card. | Deployed updated backend to PM2 cluster and frontend SPA to AWS S3 & Nginx web root. | Fully Resolved |
-| `2026-07-01T22:45:00Z` | EC2 Nginx Web Root Synchronization Audit | CI/CD Pipeline (`deploy-frontend.yml`) | `curl.exe -s http://13.238.226.195 | Select-String "assets"` | GitHub Actions pipeline succeeded, but visiting `http://13.238.226.195` (and `microps.in`) still served the old frontend SPA build. | `.github/workflows/deploy-frontend.yml` only executed `aws s3 sync dist s3://microps-client`. Because DNS points to the EC2 Nginx reverse proxy host (`13.238.226.195`), Nginx kept serving stale static files from `/var/www/microps-frontend`. | Updated `deploy-frontend.yml` to package `dist/`, SCP the archive via `appleboy/scp-action` to EC2, extract into `/var/www/microps-frontend` via `appleboy/ssh-action`, and reload Nginx. | Fully Resolved |
+| `2026-07-02T04:13:00Z` | Container Multi-Stage Build Failure | Frontend (`ConfigPanel.tsx`) & Build Worker | Runner logs: `11 | >>> RUN npm start`<br>`process "/bin/sh -c npm start" did not complete successfully: exit code: 127` | UI Deployment Config Panel passed input field labeled "Start Command" (`npm start`) as `installCommand`. The auto-healing script replaced `RUN npm ci` in tenant Dockerfile with `RUN npm start`, causing execution before node modules were installed or built. | Added dedicated `installCommand` state & form field (`npm install --legacy-peer-deps`) in `ConfigPanel.tsx`. Verified One-Click Fix (`⚡ Apply Fix`) successfully re-dispatched Job #49 and completed Fargate container deployment. | Fully Resolved |
+| `2026-07-02T04:30:00Z` | AWS ALB Routing 404 Error | AWS Application Load Balancer (`microps-tenant-alb`) | Browser access to `http://tenant-19-portfolio.microps.in` | ALB default listener returned `MicrOps Deployment Not Found` despite ECS Fargate service reporting 1 Running healthy task. | Initial service creation (`!serviceExists`) registered ALB Listener Rule with condition `Host is "tenant-19-portfolio.localhost"`. Subsequent updates (`else` branch) ran `UpdateServiceCommand` on ECS but did not modify the ALB Listener Rule condition when `BASE_DOMAIN` changed to `microps.in`. | Updated `deploy.service.ts` to inspect and update existing ALB Listener Rules (`ModifyRuleCommand`) during service updates or recreate stale routing rules. | Fully Resolved |
 
 ---
 
@@ -131,4 +132,36 @@ git add .github/workflows/deploy-frontend.yml
 git commit -m "fix: deploy compiled frontend SPA to EC2 Nginx web root in GitHub Actions"
 git push
 ```
+
+### 8. Container Multi-Stage Build Failure (`exit code 127`) & Autonomous Remediation
+```powershell
+# Error Signature observed in live SSE runner logs:
+# 11 | >>> RUN npm start
+# process "/bin/sh -c npm start" did not complete successfully: exit code: 127
+
+# Root Cause Investigation:
+# ConfigPanel.tsx had state startCommand = 'npm start', but mapped it as installCommand: startCommand inside onDeploy().
+# When generateTenantScript audited the Dockerfile, sed replaced 'RUN npm ci' with 'RUN npm start'.
+# Executing 'npm start' inside 'FROM base AS deps' (before node_modules or Next.js build existed) exited with code 127.
+
+# Remediation Applied:
+# Added explicit installCommand state ('npm install --legacy-peer-deps') to ConfigPanel.tsx.
+# Verified One-Click Fix ('⚡ Apply Fix') successfully re-dispatched Job #49 and completed ECS Fargate deployment.
+```
+
+### 9. AWS ALB Host-Based Routing 404 (`MicrOps Deployment Not Found`)
+```powershell
+# Observation:
+# ECS Cluster showed tenant-19-portfolio-service ACTIVE with 1 healthy task. Target group showed 1 healthy target.
+# Opening http://tenant-19-portfolio.microps.in returned ALB default 404 response: "MicrOps Deployment Not Found".
+
+# Root Cause Investigation:
+# Initial service creation (!serviceExists) registered an ALB Listener Rule with Host header "tenant-19-portfolio.localhost".
+# When BASE_DOMAIN was updated to microps.in and re-deployed, deploy.service.ts ran UpdateServiceCommand on ECS but did not update existing ALB Listener Rules.
+# Request for tenant-19-portfolio.microps.in failed ALB rule condition evaluation and fell through to default 404 action.
+
+# Remediation Strategy:
+# Updated deployServiceECS in deploy.service.ts to query existing ALB Listener Rules (DescribeRulesCommand) and update conditions (ModifyRuleCommand) or recreate stale rules when service updates occur.
+```
+
 

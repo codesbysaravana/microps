@@ -160,6 +160,7 @@ export const runEnterpriseMigrationAndSeed = async () => {
         framework VARCHAR(100),
         install_command TEXT,
         build_command TEXT,
+        live_url VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -172,6 +173,12 @@ export const runEnterpriseMigrationAndSeed = async () => {
           WHERE table_name='projects' AND column_name='organization_id'
         ) THEN
           ALTER TABLE projects ADD COLUMN organization_id INTEGER REFERENCES organizations(id) ON DELETE CASCADE;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name='projects' AND column_name='live_url'
+        ) THEN
+          ALTER TABLE projects ADD COLUMN live_url VARCHAR(255);
         END IF;
       END $$;
     `);

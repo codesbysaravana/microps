@@ -14,6 +14,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (token: string) => void;
   logout: () => void;
+  updateUser: (data: Partial<UserPayload>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => {
@@ -54,5 +55,9 @@ export const useAuthStore = create<AuthState>((set) => {
       localStorage.removeItem('jwt');
       set({ token: null, user: null, isAuthenticated: false });
     },
+    updateUser: (data: Partial<UserPayload>) =>
+      set((state) => ({
+        user: state.user ? { ...state.user, ...data } : null,
+      })),
   };
 });

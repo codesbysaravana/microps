@@ -6,6 +6,9 @@ export interface DeployInput {
   buildCommand: string;
   projectName: string;
   envContent?: string;
+  installCommand?: string;
+  runtime?: string;
+  projectId?: number;
 }
 
 export interface DeployResponse {

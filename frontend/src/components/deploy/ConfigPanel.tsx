@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Card, FormField, Input, Select } from '../ui/primitives';
 
 interface ConfigPanelProps {
-  onDeploy: () => void;
+  onDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => void;
   isDeploying: boolean;
   repoUrl: string;
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onDeploy, isDeploying, repoUrl }) => {
   const [branch, setBranch] = useState('main');
+  const [installCommand, setInstallCommand] = useState('npm install --legacy-peer-deps');
   const [buildCommand, setBuildCommand] = useState('npm run build');
   const [startCommand, setStartCommand] = useState('npm start');
   const [environment, setEnvironment] = useState('Production');
@@ -35,6 +36,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onDeploy, isDeploying,
                 <option value="staging">staging</option>
                 <option value="development">development</option>
               </Select>
+            </FormField>
+
+            <FormField label="Install Command">
+              <Input value={installCommand} onChange={(e) => setInstallCommand(e.target.value)} />
             </FormField>
 
             <FormField label="Build Command">
@@ -148,7 +153,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onDeploy, isDeploying,
           </p>
         </div>
         <button
-          onClick={onDeploy}
+          onClick={() => onDeploy({ branch, buildCommand, installCommand, runtime: containerImage })}
           disabled={isDeploying || !repoUrl}
           className="w-full sm:w-auto px-8 py-3.5 bg-gold hover:bg-gold-hover text-obsidian font-mono text-sm font-bold uppercase tracking-wider rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >

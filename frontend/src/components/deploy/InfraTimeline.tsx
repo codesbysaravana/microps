@@ -3,12 +3,12 @@ import { Card } from '../ui/primitives';
 
 export const InfraTimeline: React.FC = () => {
   const events = [
-    { time: '14:02:11', evt: 'Creating Container Spec & EKS Pod definitions', status: 'done' },
-    { time: '14:02:13', evt: 'Pulling Image node:20-alpine from ECR registry', status: 'done' },
-    { time: '14:02:16', evt: 'Scheduling Pod api-gateway-v2-abc1 on Fargate node-us-east-1a', status: 'done' },
-    { time: '14:02:19', evt: 'Mounting Encrypted Secrets & ConfigMap volumes', status: 'done' },
-    { time: '14:02:22', evt: 'Starting Container Process (npm start)', status: 'done' },
-    { time: '14:02:25', evt: 'Executing HTTP Readiness Probes (/api/v1/health)', status: 'done' },
+    { time: '14:02:11', evt: 'Registering AWS ECS Task Definition & Container Spec', status: 'done' },
+    { time: '14:02:13', evt: 'Pulling Image from AWS ECR private repository', status: 'done' },
+    { time: '14:02:16', evt: 'Provisioning AWS Fargate Serverless Compute Tasks', status: 'done' },
+    { time: '14:02:19', evt: 'Injecting AES-GCM Encrypted Environment Vault Variables', status: 'done' },
+    { time: '14:02:22', evt: 'Starting Container Runtime Process inside ECS Fargate', status: 'done' },
+    { time: '14:02:25', evt: 'Executing Application Health Probes (/health)', status: 'done' },
   ];
 
   return (

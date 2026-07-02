@@ -95,7 +95,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDeploy = async () => {
+  const handleDeploy = async (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => {
     if (!report) return;
     setIsDeploying(true);
     setBuildLogs(['Starting deployment sequence...']);
@@ -104,8 +104,10 @@ export const Dashboard: React.FC = () => {
     try {
       const deployResponse = await buildService.deploy({
         repoUrl,
-        branch: 'main',
-        buildCommand: 'npm run build',
+        branch: options?.branch || 'main',
+        buildCommand: options?.buildCommand || 'npm run build',
+        installCommand: options?.installCommand,
+        runtime: options?.runtime,
         projectName: repoUrl.split('/').pop() || 'app',
       });
 
@@ -269,7 +271,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center gap-6 font-mono text-xs text-text-secondary">
             <div className="flex items-center gap-2 px-3 py-1 rounded bg-surface-elevated border border-border-subtle text-[11px]">
               <span className="w-2 h-2 rounded-full bg-success"></span>
-              <span>EKS Cluster: Nominal</span>
+              <span>AWS ECS Fargate: Active</span>
             </div>
 
             {/* Profile Avatar */}

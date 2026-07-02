@@ -86,6 +86,7 @@ export const buildInitializer = async (
     installCommand,
     jobId: uniqueJobId,
     encryptedGCM,
+    projectId,
   });
 
   buildBus.emit('build-progress', { userId, jobId: job.id, message: '<------ Queued for Build Worker ------>' });
@@ -178,7 +179,7 @@ echo "Build & Push completed successfully!"
 }
 
 export const buildWorker = new Worker('tenant-builds', async (job) => {
-  const { repoUrl, branch, buildCommand, projectName, jobId, userId, encryptedGCM, installCommand, runtime } = job.data;
+  const { repoUrl, branch, buildCommand, projectName, jobId, userId, encryptedGCM, installCommand, runtime, projectId } = job.data;
   const cleanProjectName = sanitizeProjectName(projectName, repoUrl);
 
   try {
@@ -191,7 +192,7 @@ export const buildWorker = new Worker('tenant-builds', async (job) => {
       buildBus.emit('build-progress', { userId, jobId, message: '<------ Build Successful by the worker ------>' });
 
       const imageURI = `${ECR_REGISTRY_URL}/microps-hq:tenant-${userId}-${cleanProjectName}-${jobId}`;
-      await deployServiceECS(userId, cleanProjectName, imageURI, encryptedGCM);
+      await deployServiceECS(userId, cleanProjectName, imageURI, encryptedGCM, projectId);
       return finalStatus;
     } else {
       throw new Error(`Cloud Container Build Failed with status: ${finalStatus.result}`);

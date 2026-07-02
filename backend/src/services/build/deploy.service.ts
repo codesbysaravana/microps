@@ -10,9 +10,11 @@ import {
   CreateTargetGroupCommand,
   CreateRuleCommand,
   DescribeRulesCommand,
+  ModifyRuleCommand,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import { buildBus } from '../../utils/eventBus';
 import { decryptAESnGCM, EncryptedEnvPayload } from '../../utils/encryptEnv';
+import { updateProjectLiveUrlDB } from '../../repository/project.repository';
 
 const ecsClient = new ECSClient({ region: process.env.AWS_REGION || 'ap-southeast-2' });
 const elbClient = new ElasticLoadBalancingV2Client({ region: process.env.AWS_REGION || 'ap-southeast-2' });
@@ -29,11 +31,61 @@ async function getNextRulePriority(): Promise<number> {
   return priorities.length > 0 ? Math.max(...priorities) + 1 : 1;
 }
 
+async function ensureTargetGroupRule(targetGroupArn: string, tenantDomain: string): Promise<void> {
+  if (!LISTENER_ALB_ARN) return;
+  try {
+    const rulesRes = await elbClient.send(new DescribeRulesCommand({ ListenerArn: LISTENER_ALB_ARN }));
+    const existingRule = rulesRes.Rules?.find((r) =>
+      r.Actions?.some((a) => a.TargetGroupArn === targetGroupArn)
+    );
+
+    if (existingRule && existingRule.RuleArn) {
+      const values = existingRule.Conditions?.find((c) => c.Field === 'host-header')?.HostHeaderConfig?.Values || [];
+      if (!values.includes(tenantDomain)) {
+        await elbClient.send(
+          new ModifyRuleCommand({
+            RuleArn: existingRule.RuleArn,
+            Conditions: [
+              {
+                Field: 'host-header',
+                HostHeaderConfig: { Values: [tenantDomain] },
+              },
+            ],
+          })
+        );
+      }
+    } else {
+      const rulePriority = await getNextRulePriority();
+      await elbClient.send(
+        new CreateRuleCommand({
+          ListenerArn: LISTENER_ALB_ARN,
+          Priority: rulePriority,
+          Conditions: [
+            {
+              Field: 'host-header',
+              HostHeaderConfig: { Values: [tenantDomain] },
+            },
+          ],
+          Actions: [
+            {
+              Type: 'forward',
+              TargetGroupArn: targetGroupArn,
+            },
+          ],
+        })
+      );
+    }
+  } catch (err: any) {
+    console.error('[CD Engine] Failed to ensure ALB Listener Rule:', err.message);
+  }
+}
+
 export const deployServiceECS = async (
   userId: number,
   projectName: string,
   imageURI: string,
-  encryptedGCM: EncryptedEnvPayload | null
+  encryptedGCM: EncryptedEnvPayload | null,
+  projectId?: number
 ): Promise<boolean> => {
   const shortProject = projectName.substring(0, 10);
   const targetGroupName = `tg-u${userId}-${shortProject}-${Date.now().toString().slice(-6)}`;
@@ -41,6 +93,7 @@ export const deployServiceECS = async (
   const familyName = `tenant-${userId}-${projectName}-task`;
   const serviceName = `tenant-${userId}-${projectName}-service`;
   const tenantDomain = `tenant-${userId}-${projectName}.${BASE_DOMAIN}`;
+  const liveUrl = `http://${tenantDomain}`;
 
   try {
     buildBus.emit('build-progress', {
@@ -178,8 +231,13 @@ export const deployServiceECS = async (
         })
       );
 
-      buildBus.emit('build-progress', { userId, message: `[CD Engine] 🚀 Deployed successfully! App will be live at http://${tenantDomain}` });
+      await updateProjectLiveUrlDB(userId, projectId || projectName, liveUrl);
+      buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Deployed successfully! App will be live at ${liveUrl}` });
     } else {
+      const existingTgArn = describe.services?.[0]?.loadBalancers?.[0]?.targetGroupArn;
+      if (existingTgArn) {
+        await ensureTargetGroupRule(existingTgArn, tenantDomain);
+      }
       await ecsClient.send(
         new UpdateServiceCommand({
           cluster: AWS_CLUSTER_NAME_HQ,
@@ -188,7 +246,8 @@ export const deployServiceECS = async (
           forceNewDeployment: true,
         })
       );
-      buildBus.emit('build-progress', { userId, message: `[CD Engine] 🚀 Service updated successfully! App live at http://${tenantDomain}` });
+      await updateProjectLiveUrlDB(userId, projectId || projectName, liveUrl);
+      buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Service updated successfully! App live at ${liveUrl}` });
     }
 
     return true;

@@ -40,6 +40,29 @@ export class AuthController {
       next(error);
     }
   }
+
+  async updateProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized User' });
+        return;
+      }
+      const { name } = req.body;
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        res.status(400).json({ success: false, message: 'Name is required' });
+        return;
+      }
+      const updated = await authService.updateProfile(userId, name.trim());
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: { user: updated },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

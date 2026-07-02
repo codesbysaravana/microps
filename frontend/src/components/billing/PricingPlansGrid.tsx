@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Toast } from '../ui/primitives';
 
 interface PricingPlansGridProps {
   onSelectTier?: (tier: string) => void;
@@ -7,6 +8,7 @@ interface PricingPlansGridProps {
 export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier }) => {
   const [buildMinutes, setBuildMinutes] = useState(5000);
   const [bandwidth, setBandwidth] = useState(500);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Calculate dynamic price estimation based on interactive slider telemetry
   const basePrice = 29;
@@ -15,7 +17,11 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
   const estimatedMonthly = Math.round(basePrice + extraMinutesCost + extraBandwidthCost);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch select-none mb-16">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch select-none mb-16 relative">
+      {toastMessage && (
+        <Toast message={toastMessage} type="info" onDismiss={() => setToastMessage(null)} />
+      )}
+
       {/* Card 1: Hobby */}
       <div className="bg-[#131313] border border-[#2A2A2A] rounded-lg p-6 sm:p-8 flex flex-col justify-between hover:border-[#2A2A2A]/80 transition-all">
         <div>
@@ -58,7 +64,7 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
 
         <button
           type="button"
-          onClick={() => onSelectTier ? onSelectTier('FREE') : alert('You are currently exploring the free tier.')}
+          onClick={() => onSelectTier ? onSelectTier('FREE') : setToastMessage('You are currently active on the Hobby tier.')}
           className="w-full py-3.5 bg-transparent border border-[#2A2A2A] hover:border-[#D4AF37] text-[#F5F5F0] hover:text-[#D4AF37] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8"
         >
           START FREE
@@ -129,26 +135,26 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Auto-scaling infrastructure</span>
+              <span>Auto-scaling AWS ECS Fargate</span>
             </div>
             <div className="flex items-center">
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Advanced metrics & logging</span>
+              <span>Real-time SSE logging</span>
             </div>
             <div className="flex items-center">
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Priority email support</span>
+              <span>Priority enterprise support</span>
             </div>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() => onSelectTier ? onSelectTier('PRO') : alert(`Upgrading cluster allocation to Pro tier (${buildMinutes.toLocaleString()} min / ${bandwidth.toLocaleString()} GB).`)}
+          onClick={() => onSelectTier ? onSelectTier('PRO') : setToastMessage(`Selected Pro tier (${buildMinutes.toLocaleString()} min / ${bandwidth.toLocaleString()} GB). Checkout initiated.`)}
           className="w-full py-3.5 bg-[#D4AF37] hover:bg-[#e2bd44] text-[#131313] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8 shadow-[0_0_15px_rgba(212,175,55,0.25)] active:scale-[0.99]"
         >
           DEPLOY PRO
@@ -165,7 +171,7 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
             <span className="font-headline-lg text-4xl sm:text-5xl font-bold text-[#F5F5F0]">Custom</span>
           </div>
           <p className="font-body-md text-xs sm:text-sm text-neutral-400 mt-2 mb-8">
-            Dedicated infrastructure and strict compliance.
+            Dedicated AWS ECS Fargate clusters and SLAs.
           </p>
 
           <div className="space-y-4 my-8 font-mono text-xs sm:text-sm text-neutral-200">
@@ -173,7 +179,7 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Single-tenant clusters</span>
+              <span>Single-tenant ECS Fargate pools</span>
             </div>
             <div className="flex items-center">
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +191,7 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              <span>Dedicated Account Manager</span>
+              <span>Dedicated Platform Engineer</span>
             </div>
             <div className="flex items-center">
               <svg className="w-4 h-4 text-[#D4AF37] mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +204,7 @@ export const PricingPlansGrid: React.FC<PricingPlansGridProps> = ({ onSelectTier
 
         <button
           type="button"
-          onClick={() => onSelectTier ? onSelectTier('ENTERPRISE') : alert('Connecting your account to our Enterprise Dedicated Infrastructure team.')}
+          onClick={() => onSelectTier ? onSelectTier('ENTERPRISE') : setToastMessage('Connected with Enterprise Solutions team.')}
           className="w-full py-3.5 bg-transparent border border-[#2A2A2A] hover:border-[#D4AF37] text-[#F5F5F0] hover:text-[#D4AF37] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all mt-8"
         >
           CONTACT SALES

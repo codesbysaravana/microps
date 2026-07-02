@@ -16,7 +16,7 @@ export const handleGetProjects = async (req: Request, res: Response) => {
     const baseDomain = process.env.BASE_DOMAIN || 'microps.in';
     const enrichedProjects = projects.map((p: any) => ({
       ...p,
-      liveUrl: `http://${p.name}.${baseDomain}`,
+      liveUrl: p.live_url || `http://tenant-${userId}-${p.name}.${baseDomain}`,
     }));
 
     return res.status(200).json({ success: true, projects: enrichedProjects });
@@ -36,12 +36,18 @@ export const handleUpdateProject = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid request' });
     }
 
-    const updated = await updateProjectDB(userId, projectId, branch || 'main', buildCommand || '', installCommand || '');
+    const updated: any = await updateProjectDB(userId, projectId, branch || 'main', buildCommand || '', installCommand || '');
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Project not found or update failed' });
     }
 
-    return res.status(200).json({ success: true, project: updated });
+    const baseDomain = process.env.BASE_DOMAIN || 'microps.in';
+    const enrichedProject = {
+      ...updated,
+      liveUrl: updated.live_url || `http://tenant-${userId}-${updated.name}.${baseDomain}`,
+    };
+
+    return res.status(200).json({ success: true, project: enrichedProject });
   } catch (error: any) {
     console.error('[PROJECTS] Error updating project:', error.message);
     return res.status(500).json({ success: false, message: 'Internal server error' });

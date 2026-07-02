@@ -6,7 +6,7 @@ import { applyProjectFixDB } from '../repository/project.repository';
 
 export const handleBuildAndDeploy = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { repoUrl, branch, buildCommand, projectName, envContent, env } = req.body;
+    const { repoUrl, branch, buildCommand, projectName, envContent, env, installCommand, runtime, projectId } = req.body;
     const secretsPayload = envContent || env || null;
 
     // req.user is set by requireAuth middleware
@@ -19,7 +19,14 @@ export const handleBuildAndDeploy = async (req: Request, res: Response): Promise
 
     const encryptedGCM = secretsPayload ? ecryptAESnGCM(secretsPayload) : null;
 
-    const result = await buildInitializer(userId, repoUrl, branch, buildCommand, projectName, encryptedGCM);
+    const customOverrides = {
+      installCommand,
+      buildCommand,
+      runtime,
+      projectId: projectId ? Number(projectId) : undefined,
+    };
+
+    const result = await buildInitializer(userId, repoUrl, branch || 'main', buildCommand || 'npm run build', projectName, encryptedGCM, customOverrides);
     
     res.status(201).json({
       success: true,

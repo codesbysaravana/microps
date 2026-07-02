@@ -21,7 +21,7 @@ interface DeploymentControlCenterProps {
   diagnosticReport: any;
   applyingFix: boolean;
   handleAnalyze: (e: React.FormEvent) => void;
-  handleDeploy: () => void;
+  handleDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => void;
   handleApplyFixClick: () => void;
 }
 
@@ -51,9 +51,9 @@ export const DeploymentControlCenter: React.FC<DeploymentControlCenterProps> = (
     }
   }, [isDeploying, buildLogs, diagnosticReport]);
 
-  const onExecuteDeploy = () => {
+  const onExecuteDeploy = (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => {
     setViewMode('execution');
-    handleDeploy();
+    handleDeploy(options);
   };
 
   return (

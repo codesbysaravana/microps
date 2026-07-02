@@ -104,3 +104,26 @@ export const applyProjectFixDB = async (
     return false;
   }
 };
+
+export const updateProjectLiveUrlDB = async (
+  userId: number,
+  identifier: number | string,
+  liveUrl: string
+) => {
+  try {
+    let query = '';
+    let values: any[] = [];
+    if (typeof identifier === 'number') {
+      query = `UPDATE projects SET live_url = $1 WHERE id = $2 AND user_id = $3 RETURNING *`;
+      values = [liveUrl, identifier, userId];
+    } else {
+      query = `UPDATE projects SET live_url = $1 WHERE name = $2 AND user_id = $3 RETURNING *`;
+      values = [liveUrl, identifier, userId];
+    }
+    const result = await pool.query(query, values);
+    return result.rows.length > 0 ? result.rows[0] : false;
+  } catch (err) {
+    console.error('Error updating project live URL:', err);
+    return false;
+  }
+};

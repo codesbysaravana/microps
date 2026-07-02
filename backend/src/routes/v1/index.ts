@@ -5,6 +5,7 @@ import buildRoutes from './build.routes';
 import projectRoutes from './project.routes';
 import organizationRoutes from './organization.routes';
 import billingRoutes from './billing.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -34,5 +35,8 @@ router.use('/organizations', organizationRoutes);
 
 // Billing & Subscriptions endpoints
 router.use('/billing', billingRoutes);
+
+// Dashboard overview endpoints
+router.use('/dashboard', dashboardRoutes);
 
 export default router;

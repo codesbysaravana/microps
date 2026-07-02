@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Invoice } from '../../services/billingService';
+import { Toast } from '../ui/primitives';
 
 interface BillingHistoryInvoicesProps {
   invoices?: Invoice[];
 }
 
 export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ invoices }) => {
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const displayInvoices = (invoices && invoices.length > 0)
     ? invoices.map(inv => ({
         id: inv.invoice_number,
@@ -21,7 +24,11 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
       ];
 
   return (
-    <div className="space-y-12 max-w-6xl mx-auto mb-16">
+    <div className="space-y-12 max-w-6xl mx-auto mb-16 relative">
+      {toastMessage && (
+        <Toast message={toastMessage} type="info" onDismiss={() => setToastMessage(null)} />
+      )}
+
       {/* Grid: Payment Method & Support CTA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Payment Instrument */}
@@ -50,7 +57,7 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
 
           <button
             type="button"
-            onClick={() => alert('Secure Stripe billing portal session initialized.')}
+            onClick={() => setToastMessage('Secure billing portal checkout session initialized.')}
             className="w-full sm:w-auto self-start mt-6 px-4 py-2 bg-transparent border border-[#2A2A2A] hover:border-[#D4AF37] text-neutral-300 hover:text-[#D4AF37] font-mono text-xs uppercase tracking-wider rounded transition-all"
           >
             + Add Payment Method
@@ -68,13 +75,13 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
               Need custom multi-cloud topology?
             </h3>
             <p className="font-body-md text-xs sm:text-sm text-neutral-400 mb-6">
-              Our infrastructure architects design dedicated Kubernetes clusters, VPC peering bridges, and custom billing terms.
+              Our infrastructure architects design dedicated AWS ECS Fargate clusters, VPC peering bridges, and custom billing terms.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => alert('Opening direct priority channel with MicrOps Solutions Architect.')}
+            onClick={() => setToastMessage('Opened direct priority channel with MicrOps Solutions Architect.')}
             className="w-full sm:w-auto self-start mt-6 px-5 py-2.5 bg-[#D4AF37] hover:bg-[#e2bd44] text-[#131313] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all shadow-[0_0_15px_rgba(212,175,55,0.2)]"
           >
             Schedule Architecture Review
@@ -95,7 +102,7 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
           </div>
           <button
             type="button"
-            onClick={() => alert('Exporting complete CSV billing ledger archive.')}
+            onClick={() => setToastMessage('Exporting complete CSV billing ledger archive.')}
             className="px-3.5 py-1.5 border border-[#2A2A2A] rounded font-mono text-xs text-neutral-300 hover:text-white hover:border-neutral-500 transition-colors"
           >
             Download CSV Ledger
@@ -129,7 +136,7 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
                   <td className="py-4 px-6 text-right">
                     <button
                       type="button"
-                      onClick={() => alert(`Downloading PDF receipt for ${inv.id}`)}
+                      onClick={() => setToastMessage(`Generating PDF receipt for invoice ${inv.id}...`)}
                       className="text-[#D4AF37] hover:underline font-semibold"
                     >
                       PDF Receipt ↓

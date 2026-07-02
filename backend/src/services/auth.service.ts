@@ -45,6 +45,15 @@ export class AuthService {
     const { password_hash, ...userWithoutPassword } = user;
     return { user: userWithoutPassword, token };
   }
+
+  async updateProfile(userId: number, name: string) {
+    const updatedUser = await userRepository.updateProfile(userId, name);
+    if (!updatedUser) {
+      throw { status: 404, message: 'User not found' };
+    }
+    const { password_hash, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
 }
 
 export const authService = new AuthService();
