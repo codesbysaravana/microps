@@ -18,7 +18,7 @@ export const EnterpriseLogosSection: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
         <div className="bg-[#131313] border border-[#2A2A2A] p-8 rounded-2xl">
-          <span className="font-mono text-xs text-emerald-400 font-bold block mb-3">CERTIFIED</span>
+          <span className="font-mono text-xs text-neutral-400 font-bold block mb-3">CERTIFIED</span>
           <h3 className="font-headline-md text-xl font-semibold text-[#F5F5F0] mb-2">SOC2 Type II & ISO 27001</h3>
           <p className="font-body-md text-sm text-neutral-400">Continuous cryptographic logging with automated compliance reporting and tamper-proof audit rails.</p>
         </div>

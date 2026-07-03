@@ -21,7 +21,7 @@ interface DeploymentControlCenterProps {
   diagnosticReport: any;
   applyingFix: boolean;
   handleAnalyze: (e: React.FormEvent) => void;
-  handleDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => void;
+  handleDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string; envContent?: string }) => void;
   handleApplyFixClick: () => void;
 }
 
@@ -51,7 +51,7 @@ export const DeploymentControlCenter: React.FC<DeploymentControlCenterProps> = (
     }
   }, [isDeploying, buildLogs, diagnosticReport]);
 
-  const onExecuteDeploy = (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => {
+  const onExecuteDeploy = (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string; envContent?: string }) => {
     setViewMode('execution');
     handleDeploy(options);
   };
@@ -90,17 +90,19 @@ export const DeploymentControlCenter: React.FC<DeploymentControlCenterProps> = (
             diagnosticReport={diagnosticReport}
             applyingFix={applyingFix}
             handleApplyFixClick={handleApplyFixClick}
+            buildLogs={buildLogs}
           />
 
           <PipelineView
             isDeploying={isDeploying}
             diagnosticReport={diagnosticReport}
+            buildLogs={buildLogs}
           />
 
           <LogConsole buildLogs={buildLogs} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <InfraTimeline />
+            <InfraTimeline buildLogs={buildLogs} isDeploying={isDeploying} />
             <HealthSummary />
           </div>
         </div>

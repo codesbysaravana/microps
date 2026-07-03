@@ -47,7 +47,7 @@ export const VisualInfrastructure: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
               {/* Subtle activity light */}
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-neutral-400 animate-pulse"></span>
             </div>
             <span className="font-mono text-xs text-neutral-200 tracking-wider font-bold">
               API GATEWAY
@@ -128,7 +128,7 @@ export const VisualInfrastructure: React.FC = () => {
               <span className="font-mono text-[11px] text-neutral-200 tracking-wider font-bold">
                 PRIMARY DB
               </span>
-              <span className="font-mono text-[9px] text-emerald-400">
+              <span className="font-mono text-[9px] text-neutral-400">
                 Multi-AZ Replica
               </span>
             </div>
@@ -162,7 +162,7 @@ export const VisualInfrastructure: React.FC = () => {
         {/* Live Telemetry Status Bar */}
         <div className="mt-10 pt-6 border-t border-[#2A2A2A] flex flex-wrap items-center justify-between gap-4 font-mono text-xs text-neutral-400 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span className="w-2 h-2 rounded-full bg-neutral-400"></span>
             <span>Mesh Topology: Active & Synchronized</span>
           </div>
           <div className="flex items-center gap-6">

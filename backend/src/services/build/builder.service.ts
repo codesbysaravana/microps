@@ -123,12 +123,16 @@ if [ ! -f Dockerfile ]; then
     cat << 'DOCKEREOF' > Dockerfile
 FROM ${nodeRuntime}
 WORKDIR /app
+RUN npm install -g serve
 COPY package*.json ./
 RUN ${nodeInstall}
 COPY . .
 RUN ${nodeBuild}
 EXPOSE 3000
-CMD ["npm", "start"]
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'if node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.start?0:1)" 2>/dev/null; then exec npm start; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.preview?0:1)" 2>/dev/null; then exec npm run preview -- --host 0.0.0.0 --port 3000; elif [ -d dist ]; then exec serve -s dist -l 3000; elif [ -d build ]; then exec serve -s build -l 3000; elif [ -d out ]; then exec serve -s out -l 3000; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.dev?0:1)" 2>/dev/null; then exec npm run dev -- --host 0.0.0.0 --port 3000; else exec node server.js || exec node index.js; fi' >> /app/start.sh && \
+    chmod +x /app/start.sh
+CMD ["/app/start.sh"]
 DOCKEREOF
   elif [ -f requirements.txt ]; then
     cat << 'DOCKEREOF' > Dockerfile
@@ -137,8 +141,28 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 8000
-CMD ["python", "app.py"]
+ENV PORT=3000
+EXPOSE 3000
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'if [ -f main.py ]; then exec uvicorn main:app --host 0.0.0.0 --port 3000; elif [ -f app.py ]; then exec uvicorn app:app --host 0.0.0.0 --port 3000; elif [ -f manage.py ]; then exec python manage.py runserver 0.0.0.0:3000; else exec python -m http.server 3000; fi' >> /app/start.sh && \
+    chmod +x /app/start.sh
+CMD ["/app/start.sh"]
+DOCKEREOF
+  elif [ -f pom.xml ]; then
+    cat << 'DOCKEREOF' > Dockerfile
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B 2>/dev/null || true
+COPY src ./src
+RUN mvn package -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+ENV SERVER_PORT=3000
+EXPOSE 3000
+ENTRYPOINT ["java", "-Dserver.port=3000", "-jar", "app.jar"]
 DOCKEREOF
   else
     cat << 'DOCKEREOF' > Dockerfile
@@ -154,6 +178,16 @@ else
   sed -i 's/RUN npm ci.*/RUN ${nodeInstall}/g' Dockerfile 2>/dev/null || true
   sed -i 's/RUN npm install.*/RUN ${nodeInstall}/g' Dockerfile 2>/dev/null || true
   sed -i 's/npm ci.*/${nodeInstall}/g' Dockerfile 2>/dev/null || true
+
+  # FIX #1: Targeted port normalization — rewrite EXPOSE, --port, -p declarations, and quoted exec arrays
+  # This avoids corrupting arbitrary strings while catching CMD ["--port", "8000"]
+  for OLD_PORT in 8000 8080 5000 4000 9000; do
+    sed -i "s/EXPOSE $OLD_PORT/EXPOSE 3000/g" Dockerfile 2>/dev/null || true
+    sed -i "s/--port[= \"]*$OLD_PORT/--port 3000/g" Dockerfile 2>/dev/null || true
+    sed -i "s/-p[= \"]*$OLD_PORT/-p 3000/g" Dockerfile 2>/dev/null || true
+    sed -i "s/:$OLD_PORT/:3000/g" Dockerfile 2>/dev/null || true
+    sed -i "s/\"$OLD_PORT\"/\"3000\"/g" Dockerfile 2>/dev/null || true
+  done
 fi
 
 echo "====== MicrOps Orchestrator: Building Docker Image ======"

@@ -50,8 +50,18 @@ export const billingService = {
   getOverview: (orgId?: number) =>
     apiClient<BillingOverview>(`/billing/overview${orgId ? `?orgId=${orgId}` : ''}`),
   upgradePlan: (tier: string) =>
-    apiClient<BillingOverview>('/billing/upgrade', {
+    apiClient<any>('/billing/upgrade', {
       method: 'POST',
       data: { tier },
+    }),
+  createCheckoutSession: (tier: string) =>
+    apiClient<{ checkoutUrl?: string }>('/billing/checkout-session', {
+      method: 'POST',
+      data: { tier },
+    }),
+  createPortalSession: () =>
+    apiClient<{ portalUrl?: string }>('/billing/portal-session', {
+      method: 'POST',
+      data: {},
     }),
 };

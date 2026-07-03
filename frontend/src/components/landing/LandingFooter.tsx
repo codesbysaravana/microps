@@ -21,10 +21,10 @@ export const LandingFooter: React.FC = () => {
             PRODUCT
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#overview" className="hover:text-[#D4AF37] transition-colors block">Platform</a></li>
-            <li><a href="#features" className="hover:text-[#D4AF37] transition-colors block">Features</a></li>
-            <li><a href="#ai" className="hover:text-[#D4AF37] transition-colors block">Integrations</a></li>
-            <li><a href="#pricing" className="hover:text-[#D4AF37] transition-colors block">Pricing</a></li>
+            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Platform</a></li>
+            <li><a href="#features" className="hover:text-neutral-300 transition-colors block">Features</a></li>
+            <li><a href="#ai" className="hover:text-neutral-300 transition-colors block">Integrations</a></li>
+            <li><a href="#pricing" className="hover:text-neutral-300 transition-colors block">Pricing</a></li>
           </ul>
         </div>
 
@@ -34,10 +34,10 @@ export const LandingFooter: React.FC = () => {
             RESOURCES
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#faq" className="hover:text-[#D4AF37] transition-colors block">Documentation</a></li>
-            <li><a href="#faq" className="hover:text-[#D4AF37] transition-colors block">API Reference</a></li>
-            <li><a href="#faq" className="hover:text-[#D4AF37] transition-colors block">Community</a></li>
-            <li><a href="#faq" className="hover:text-[#D4AF37] transition-colors block">Status</a></li>
+            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Documentation</a></li>
+            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">API Reference</a></li>
+            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Community</a></li>
+            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Status</a></li>
           </ul>
         </div>
 
@@ -47,10 +47,10 @@ export const LandingFooter: React.FC = () => {
             COMPANY
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#overview" className="hover:text-[#D4AF37] transition-colors block">About Us</a></li>
-            <li><a href="#overview" className="hover:text-[#D4AF37] transition-colors block">Careers</a></li>
-            <li><a href="#overview" className="hover:text-[#D4AF37] transition-colors block">Blog</a></li>
-            <li><a href="#overview" className="hover:text-[#D4AF37] transition-colors block">Contact</a></li>
+            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">About Us</a></li>
+            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Careers</a></li>
+            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Blog</a></li>
+            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Contact</a></li>
           </ul>
         </div>
       </div>

@@ -95,7 +95,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDeploy = async (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => {
+  const handleDeploy = async (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string; envContent?: string }) => {
     if (!report) return;
     setIsDeploying(true);
     setBuildLogs(['Starting deployment sequence...']);
@@ -108,6 +108,7 @@ export const Dashboard: React.FC = () => {
         buildCommand: options?.buildCommand || 'npm run build',
         installCommand: options?.installCommand,
         runtime: options?.runtime,
+        envContent: options?.envContent,
         projectName: repoUrl.split('/').pop() || 'app',
       });
 

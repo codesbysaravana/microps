@@ -183,6 +183,42 @@ export const runEnterpriseMigrationAndSeed = async () => {
       END $$;
     `);
 
+    // 11.5 Stripe Billing & Webhook Idempotency Schema
+    console.log('💳 Adding Stripe integration schema columns and idempotency ledger...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+        id SERIAL PRIMARY KEY,
+        stripe_event_id VARCHAR(255) UNIQUE NOT NULL,
+        event_type VARCHAR(100) NOT NULL,
+        status VARCHAR(50) DEFAULT 'PROCESSED',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organizations' AND column_name='stripe_customer_id') THEN
+          ALTER TABLE organizations ADD COLUMN stripe_customer_id VARCHAR(255) UNIQUE;
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='plans' AND column_name='stripe_product_id') THEN
+          ALTER TABLE plans ADD COLUMN stripe_product_id VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='plans' AND column_name='stripe_price_id_monthly') THEN
+          ALTER TABLE plans ADD COLUMN stripe_price_id_monthly VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='plans' AND column_name='stripe_price_id_yearly') THEN
+          ALTER TABLE plans ADD COLUMN stripe_price_id_yearly VARCHAR(255);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organization_subscriptions' AND column_name='stripe_subscription_id') THEN
+          ALTER TABLE organization_subscriptions ADD COLUMN stripe_subscription_id VARCHAR(255) UNIQUE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organization_subscriptions' AND column_name='stripe_price_id') THEN
+          ALTER TABLE organization_subscriptions ADD COLUMN stripe_price_id VARCHAR(255);
+        END IF;
+      END $$;
+    `);
+
     // 12. Create Indexes
     console.log('⚡ Creating performance indexes...');
     await client.query(`
@@ -194,6 +230,7 @@ export const runEnterpriseMigrationAndSeed = async () => {
       CREATE INDEX IF NOT EXISTS idx_plan_features_plan_id ON plan_features(plan_id);
       CREATE INDEX IF NOT EXISTS idx_invoices_org_id ON invoices(organization_id);
       CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
+      CREATE INDEX IF NOT EXISTS idx_stripe_webhook_events_event_id ON stripe_webhook_events(stripe_event_id);
     `);
 
     // 13. Seed Plans

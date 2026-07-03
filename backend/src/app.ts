@@ -3,12 +3,20 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import v1Routes from './routes/v1';
+import webhookRoutes from './routes/v1/webhook.routes';
 
 const app: Express = express();
+
+// Trust Cloudflare and AWS ALB proxy headers (X-Forwarded-Proto, CF-Connecting-IP)
+app.set('trust proxy', 1);
 
 // Security and utility middlewares
 app.use(helmet());
 app.use(cors());
+
+// Mount Stripe webhook route BEFORE express.json() so raw body buffer is preserved for HMAC verification
+app.use('/api/v1/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));

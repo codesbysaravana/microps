@@ -36,13 +36,32 @@ export const BillingSection: React.FC = () => {
   const handleSelectTier = async (tier: string) => {
     try {
       setLoading(true);
-      const res = await billingService.upgradePlan(tier);
-      if (res) {
-        setOverview(res);
-        setToastMessage(`Successfully upgraded organization plan to ${tier}!`);
+      setToastMessage('Initiating Stripe Checkout securely...');
+      const res = await billingService.createCheckoutSession(tier);
+      if (res && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        // Fallback or immediate transition
+        await fetchOverview();
+        setToastMessage(`Successfully transitioned organization plan to ${tier}!`);
       }
     } catch (err: any) {
-      setToastMessage(err.message || 'Error updating subscription tier.');
+      setToastMessage(err.message || 'Error initializing Stripe Checkout session.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManagePortal = async () => {
+    try {
+      setLoading(true);
+      setToastMessage('Redirecting to Stripe Customer Portal...');
+      const res = await billingService.createPortalSession();
+      if (res && res.portalUrl) {
+        window.location.href = res.portalUrl;
+      }
+    } catch (err: any) {
+      setToastMessage(err.message || 'Error opening Stripe Customer Portal.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +77,7 @@ export const BillingSection: React.FC = () => {
       <BillingHeader />
 
       {/* Authenticated Dashboard Context Card */}
-      <CurrentSubscriptionCard overview={overview} onUpgradeClick={handleScrollToPro} />
+      <CurrentSubscriptionCard overview={overview} onUpgradeClick={handleScrollToPro} onManagePortalClick={handleManagePortal} />
 
       {/* Visual Source of Truth 3-Tier Grid with Interactive Telemetry Sliders */}
       <PricingPlansGrid onSelectTier={handleSelectTier} />

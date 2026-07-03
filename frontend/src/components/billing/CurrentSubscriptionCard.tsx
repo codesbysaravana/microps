@@ -4,9 +4,10 @@ import type { BillingOverview } from '../../services/billingService';
 interface CurrentSubscriptionCardProps {
   overview?: BillingOverview | null;
   onUpgradeClick?: () => void;
+  onManagePortalClick?: () => void;
 }
 
-export const CurrentSubscriptionCard: React.FC<CurrentSubscriptionCardProps> = ({ overview, onUpgradeClick }) => {
+export const CurrentSubscriptionCard: React.FC<CurrentSubscriptionCardProps> = ({ overview, onUpgradeClick, onManagePortalClick }) => {
   const planName = overview?.plan?.name || 'Hobby Explorer';
   const planTier = overview?.plan?.tier || 'FREE';
   const buildMinsMetric = overview?.usage?.find(u => u.metricKey === 'build_minutes');
@@ -40,11 +41,20 @@ export const CurrentSubscriptionCard: React.FC<CurrentSubscriptionCardProps> = (
             {planName} <span className="text-sm font-mono text-neutral-500 font-normal ml-2">({overview?.organization?.name || 'Personal Organization'})</span>
           </h2>
           <p className="font-body-md text-xs sm:text-sm text-neutral-400">
-            Billing Cycle: Monthly • Renewal Date: August 1, 2026 • Payment Method: {planTier === 'FREE' ? 'None Required' : 'Active Ledger'}
+            Billing Cycle: Monthly • Renewal Date: August 1, 2026 • Payment Method: {planTier === 'FREE' ? 'None Required' : 'Verified Stripe Billing'}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+          {planTier !== 'FREE' && onManagePortalClick && (
+            <button
+              type="button"
+              onClick={onManagePortalClick}
+              className="px-5 py-2.5 bg-[#2A2A2A] hover:bg-[#383838] text-[#F5F5F0] border border-[#3A3A3A] font-mono text-xs font-bold uppercase tracking-wider rounded transition-all active:scale-[0.99]"
+            >
+              Stripe Customer Portal
+            </button>
+          )}
           <button
             type="button"
             onClick={onUpgradeClick}

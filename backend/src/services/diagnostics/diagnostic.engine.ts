@@ -139,6 +139,28 @@ export async function analyzeBuildFailure(rawLogs: string, jobId: string, runtim
     };
   }
 
+  // Rule 6: Missing Start Script (Vite / Static SPAs)
+  if (/Missing script: "?start"?|npm ERR! missing script: start/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'MISSING_START_SCRIPT',
+      jobId,
+      failureTitle: '❌ Runtime failed: Missing start script.',
+      rootCause: 'React/Vite SPA package.json lacks an explicit "start" script. Container needs static file serving.',
+      detected: 'npm run start',
+      probability: '99%',
+      fixAction: {
+        label: 'Serve static build directory (npx serve -s dist -l 3000)',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'npm run build',
+        },
+      },
+    };
+  }
+
   // Tier-2: AI Autonomous Diagnostic Agent (OpenAI LLM Call with JSON Schema structuring)
   const aiReport = await callOpenAiDiagnosticAgent(logs, jobId, runtime);
   if (aiReport) {

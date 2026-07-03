@@ -32,7 +32,7 @@ export const AiIntegrationsSection: React.FC = () => {
             </div>
             <div className="bg-[#1C1B1B] p-4 rounded-xl border border-[#2A2A2A] font-mono text-xs text-neutral-300 flex justify-between items-center">
               <span>Predicted Cost Savings</span>
-              <span className="text-emerald-400 font-bold">42.8% Average Efficiency</span>
+              <span className="text-neutral-400 font-bold">42.8% Average Efficiency</span>
             </div>
           </div>
 

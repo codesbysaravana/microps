@@ -62,7 +62,7 @@ export const HeroSection: React.FC = () => {
         {/* Architectural Telemetry Hint */}
         <div className="mt-16 pt-8 border-t border-[#2A2A2A]/40 w-full flex flex-wrap items-center justify-center gap-8 text-neutral-500 font-mono text-xs uppercase tracking-wider">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-neutral-400 animate-pulse"></span>
             <span>99.99% SLA Guarantee</span>
           </div>
           <div className="flex items-center gap-2">

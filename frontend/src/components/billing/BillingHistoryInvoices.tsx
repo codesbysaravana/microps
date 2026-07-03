@@ -51,7 +51,7 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
                   <div className="text-neutral-500 text-[11px]">Add credit card when upgrading above Hobby limit</div>
                 </div>
               </div>
-              <span className="text-emerald-400 font-bold text-[11px]">VERIFIED</span>
+              <span className="text-neutral-400 font-bold text-[11px]">VERIFIED</span>
             </div>
           </div>
 
@@ -129,7 +129,7 @@ export const BillingHistoryInvoices: React.FC<BillingHistoryInvoicesProps> = ({ 
                   <td className="py-4 px-6">{inv.tier}</td>
                   <td className="py-4 px-6 font-bold text-[#F5F5F0]">{inv.amount}</td>
                   <td className="py-4 px-6">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-neutral-900 text-neutral-300 border border-neutral-700">
                       {inv.status}
                     </span>
                   </td>

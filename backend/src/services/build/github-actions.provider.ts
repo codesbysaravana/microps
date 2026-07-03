@@ -13,7 +13,7 @@ const getHeaders = () => ({
   'User-Agent': 'MicrOps-Orchestrator',
 });
 
-async function triggerGitHubWorkflow(tenantScript: string) {
+async function triggerGitHubWorkflow(tenantScript: string, correlationId: string) {
   const url = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/workflows/${getWorkflowId()}/dispatches`;
 
   const response = await fetch(url, {
@@ -32,31 +32,72 @@ async function triggerGitHubWorkflow(tenantScript: string) {
     throw new Error(`GitHub Actions rejected Trigger with (${response.status}): ${errText}`);
   }
 
-  console.log('[PROVIDER (shh secret)] Successfully dispatched GitHub Actions workflow!');
+  console.log(`[PROVIDER] Successfully dispatched workflow with correlationId=${correlationId}`);
 }
 
-async function getLatestWorkflowRun() {
-  await new Promise((r) => setTimeout(r, 3000));
+// FIX #3: Search recent runs for one matching our correlation timestamp instead of blindly taking per_page=1
+async function getLatestWorkflowRun(dispatchedAfter: number, maxRetries = 5) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    await new Promise((r) => setTimeout(r, 3000));
 
-  const url = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/workflows/${getWorkflowId()}/runs?event=workflow_dispatch&per_page=1`;
+    const url = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/workflows/${getWorkflowId()}/runs?event=workflow_dispatch&per_page=10`;
 
-  const response = await fetch(url, {
-    headers: getHeaders(),
-  });
-  const data = await response.json();
+    const response = await fetch(url, {
+      headers: getHeaders(),
+    });
+    const data = await response.json();
 
-  if (data.workflow_runs && data.workflow_runs.length > 0) {
-    return data.workflow_runs[0];
+    if (data.workflow_runs && data.workflow_runs.length > 0) {
+      // Find the run that was created after our dispatch timestamp (within a reasonable window)
+      const matchedRun = data.workflow_runs.find((run: any) => {
+        const createdAt = new Date(run.created_at).getTime();
+        return createdAt >= dispatchedAfter - 5000; // 5s tolerance for clock skew
+      });
+
+      if (matchedRun) return matchedRun;
+
+      // If no timestamp match found on last attempt, fall back to most recent (backward compat)
+      if (attempt === maxRetries - 1) {
+        console.warn('[PROVIDER] Could not find correlated run, falling back to most recent.');
+        return data.workflow_runs[0];
+      }
+    }
   }
   return null;
 }
+
+function cleanLogLines(rawLogs: string, startIndex: number): { cleanedChunk: string; nextIndex: number } {
+  const lines = rawLogs.split('\n');
+  if (lines.length <= startIndex) return { cleanedChunk: '', nextIndex: startIndex };
+
+  const newLines = lines.slice(startIndex);
+  const cleaned = newLines
+    .map((line) => line.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z\s*/, '').trimEnd())
+    .filter((line) => {
+      if (!line) return false;
+      if (line.startsWith('##[group]') || line.startsWith('##[endgroup]')) return false;
+      if (line.includes('Prepare workflow') || line.includes('Set up job')) return false;
+      return true;
+    });
+
+  return {
+    cleanedChunk: cleaned.join('\n'),
+    nextIndex: lines.length,
+  };
+}
+
+// FIX #7: Added maxAttempts (150 × 4s = 10 min) to prevent infinite polling
+const MAX_POLL_ATTEMPTS = 150;
 
 async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
   const runUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/runs/${runId}`;
   const jobsUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/runs/${runId}/jobs`;
   const seenSteps = new Set<string>();
+  let lastLogLineIndex = 0;
+  let attempts = 0;
 
-  while (true) {
+  while (attempts < MAX_POLL_ATTEMPTS) {
+    attempts++;
     const res = await fetch(runUrl, { headers: getHeaders() });
     const run = await res.json();
 
@@ -86,13 +127,29 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
             }
           }
 
-          if (run.status === 'completed' && run.conclusion !== 'success') {
-            let rawLogs = '';
-            const logUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/jobs/${job.id}/logs`;
+          let rawLogs = '';
+          const logUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/jobs/${job.id}/logs`;
+          try {
             const logRes = await fetch(logUrl, { headers: getHeaders() });
             if (logRes.ok) {
               rawLogs = await logRes.text();
-              const tailLogs = rawLogs.split('\n').slice(-15).join('\n');
+              const { cleanedChunk, nextIndex } = cleanLogLines(rawLogs, lastLogLineIndex);
+              lastLogLineIndex = nextIndex;
+              if (cleanedChunk) {
+                buildBus.emit('build-progress', {
+                  userId,
+                  jobId,
+                  message: cleanedChunk,
+                });
+              }
+            }
+          } catch (logErr: any) {
+            // Logs not streamable yet
+          }
+
+          if (run.status === 'completed' && run.conclusion !== 'success') {
+            const tailLogs = rawLogs.split('\n').slice(-15).join('\n');
+            if (tailLogs) {
               buildBus.emit('build-progress', {
                 userId,
                 jobId,
@@ -120,15 +177,21 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
       };
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
   }
+
+  // FIX #7: Timeout reached — throw instead of hanging forever
+  throw new Error(`Build polling timed out after ${MAX_POLL_ATTEMPTS * 4} seconds. The GitHub Actions run may still be in progress.`);
 }
 
 export async function runBuildPipeline(tenantScript: string, jobId: string, userId: number) {
-  buildBus.emit('build-progress', { userId, jobId, message: '[GitHub Runner] Dispatching ephemeral container build...' });
-  await triggerGitHubWorkflow(tenantScript);
+  const correlationId = `microps-${jobId}-${Date.now()}`;
+  const dispatchTimestamp = Date.now();
 
-  const run = await getLatestWorkflowRun();
+  buildBus.emit('build-progress', { userId, jobId, message: '[GitHub Runner] Dispatching ephemeral container build...' });
+  await triggerGitHubWorkflow(tenantScript, correlationId);
+
+  const run = await getLatestWorkflowRun(dispatchTimestamp);
 
   if (!run) {
     throw new Error('Failed to locate triggered GitHub Actions workflow run.');

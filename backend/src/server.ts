@@ -7,9 +7,19 @@ const envFile = isDev ? '.env.development' : '.env.production';
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 dotenv.config(); // fallback to default .env
 
+import { runEnterpriseMigrationAndSeed } from './scripts/init_enterprise_schema';
+
 // Use port 8000 to avoid conflict with the learning server (which uses 5000)
 const PORT = process.env.PORT || 8000;
 
-app.listen(PORT, () => {
-  console.log(`[Backend API] Server is running on http://localhost:${PORT}`);
-});
+// Automatically apply idempotent database schema migrations and seeds on startup
+runEnterpriseMigrationAndSeed()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`[Backend API] Server is running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('[Backend API] Failed to initialize database schema on startup:', err);
+    process.exit(1);
+  });

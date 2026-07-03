@@ -5,6 +5,7 @@ export interface Organization {
   name: string;
   slug: string;
   billing_email: string | null;
+  stripe_customer_id?: string;
   created_at: Date;
   updated_at: Date;
 }

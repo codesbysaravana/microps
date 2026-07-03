@@ -4,6 +4,7 @@ import { billingService } from '../services/billing.service';
 import { subscriptionRepository } from '../repository/subscription.repository';
 import { planRepository } from '../repository/plan.repository';
 import { PlanTier } from '../types/billing.types';
+import { stripeService } from '../services/stripe.service';
 
 export const getAvailablePlans = async (req: Request, res: Response) => {
   try {
@@ -68,5 +69,52 @@ export const upgradeSubscriptionPlaceholder = async (req: Request, res: Response
   } catch (err: any) {
     console.error('upgradeSubscriptionPlaceholder error:', err);
     return res.status(500).json({ success: false, message: 'Error upgrading subscription' });
+  }
+};
+
+export const createCheckoutSession = async (req: Request, res: Response) => {
+  try {
+    if (!req.organizationContext) {
+      return res.status(400).json({ success: false, message: 'Missing organization context' });
+    }
+    const { tier, successUrl, cancelUrl } = req.body;
+    if (!tier) {
+      return res.status(400).json({ success: false, message: 'Plan tier required' });
+    }
+
+    const orgId = req.organizationContext.organization.id;
+    const origin = req.headers.origin || 'http://localhost:5173';
+    const sUrl = successUrl || `${origin}/dashboard?checkout=success`;
+    const cUrl = cancelUrl || `${origin}/dashboard?checkout=canceled`;
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      // Dev/Testing fallback: execute placeholder upgrade if Stripe keys aren't set
+      console.warn('⚠️ [Stripe Checkout] STRIPE_SECRET_KEY missing. Falling back to dev subscription transition.');
+      return upgradeSubscriptionPlaceholder(req, res);
+    }
+
+    const session = await stripeService.createCheckoutSession(orgId, tier, sUrl, cUrl);
+    return res.status(200).json({ success: true, data: session });
+  } catch (err: any) {
+    console.error('createCheckoutSession error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to initialize Stripe Checkout' });
+  }
+};
+
+export const createPortalSession = async (req: Request, res: Response) => {
+  try {
+    if (!req.organizationContext) {
+      return res.status(400).json({ success: false, message: 'Missing organization context' });
+    }
+    const orgId = req.organizationContext.organization.id;
+    const origin = req.headers.origin || 'http://localhost:5173';
+    const { returnUrl } = req.body;
+    const rUrl = returnUrl || `${origin}/dashboard`;
+
+    const session = await stripeService.createPortalSession(orgId, rUrl);
+    return res.status(200).json({ success: true, data: session });
+  } catch (err: any) {
+    console.error('createPortalSession error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to initialize Stripe Customer Portal' });
   }
 };

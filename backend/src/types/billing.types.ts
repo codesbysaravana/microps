@@ -7,6 +7,9 @@ export interface Plan {
   price_monthly_cents: number;
   price_yearly_cents: number;
   is_active: boolean;
+  stripe_product_id?: string;
+  stripe_price_id_monthly?: string;
+  stripe_price_id_yearly?: string;
   created_at: Date;
 }
 
@@ -23,6 +26,8 @@ export interface OrganizationSubscription {
   organization_id: number;
   plan_id: number;
   status: string;
+  stripe_subscription_id?: string;
+  stripe_price_id?: string;
   current_period_start: Date;
   current_period_end: Date | null;
   cancel_at_period_end: boolean;

@@ -286,6 +286,28 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
                       </div>
                     </div>
                   </div>
+
+                  {/* Live Endpoint Banner */}
+                  {project.liveUrl && (
+                    <div className="mb-5">
+                      <a
+                        href={project.liveUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-obsidian/80 border border-gold/40 hover:border-gold hover:bg-gold/10 text-ivory transition-all group/link shadow-inner"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0 shadow-[0_0_8px_#34C759]"></span>
+                          <span className="font-mono text-xs font-semibold text-gold truncate group-hover/link:underline">
+                            {project.liveUrl.replace(/^https?:\/\//, '')}
+                          </span>
+                        </div>
+                        <svg className="w-3.5 h-3.5 text-text-muted group-hover/link:text-gold shrink-0 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bottom Row: Footer */}

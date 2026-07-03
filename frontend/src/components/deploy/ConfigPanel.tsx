@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, FormField, Input, Select } from '../ui/primitives';
 
 interface ConfigPanelProps {
-  onDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string }) => void;
+  onDeploy: (options?: { branch?: string; buildCommand?: string; installCommand?: string; runtime?: string; envContent?: string }) => void;
   isDeploying: boolean;
   repoUrl: string;
 }
@@ -153,7 +153,19 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onDeploy, isDeploying,
           </p>
         </div>
         <button
-          onClick={() => onDeploy({ branch, buildCommand, installCommand, runtime: containerImage })}
+          onClick={() => {
+            const formattedEnv = envVars
+              .filter((ev) => ev.key.trim() !== '')
+              .map((ev) => `${ev.key.trim()}=${ev.value.trim()}`)
+              .join('\n');
+            onDeploy({
+              branch,
+              buildCommand,
+              installCommand,
+              runtime: containerImage,
+              envContent: formattedEnv || undefined,
+            });
+          }}
           disabled={isDeploying || !repoUrl}
           className="w-full sm:w-auto px-8 py-3.5 bg-gold hover:bg-gold-hover text-obsidian font-mono text-sm font-bold uppercase tracking-wider rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
