@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/useAuthStore';
 
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://13.238.226.195/api/v1';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'https://microps.in/api/v1';
 
 interface FetchOptions extends RequestInit {
   data?: any;
