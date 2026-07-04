@@ -25,7 +25,7 @@ jobs:
       - name: Install Dependencies & Build SPA
         working-directory: ./frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://microps.in/api/v1' }}
+          VITE_API_URL: 'https://microps.in/api/v1'
         run: |
           npm ci
           npm run build
