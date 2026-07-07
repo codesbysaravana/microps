@@ -90,7 +90,6 @@ export const DeploymentControlCenter: React.FC<DeploymentControlCenterProps> = (
             diagnosticReport={diagnosticReport}
             applyingFix={applyingFix}
             handleApplyFixClick={handleApplyFixClick}
-            buildLogs={buildLogs}
           />
 
           <PipelineView

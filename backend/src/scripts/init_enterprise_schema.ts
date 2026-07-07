@@ -12,11 +12,17 @@ export const runEnterpriseMigrationAndSeed = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
+        password_hash TEXT,
+        github_id VARCHAR(255) UNIQUE,
+        github_username VARCHAR(255),
+        github_access_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure password_hash is nullable for existing DBs
+    await client.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;`);
 
     // 2. Multi-Tenant Organizations
     console.log('📦 Creating organizations table...');
@@ -147,14 +153,18 @@ export const runEnterpriseMigrationAndSeed = async () => {
       );
     `);
 
-    // 11. Alter projects table to attach organization_id
-    console.log('🔗 Attaching organization_id to projects...');
+    // 11. Alter projects table to attach organization_id & github integration fields
+    console.log('🔗 Attaching organization_id and github fields to projects...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
         repo_url TEXT NOT NULL,
+        github_repo_owner VARCHAR(255),
+        github_repo_name VARCHAR(255),
+        github_webhook_id VARCHAR(255),
+        github_workflow_installed BOOLEAN DEFAULT false,
         branch VARCHAR(255) DEFAULT 'main',
         language VARCHAR(100),
         framework VARCHAR(100),
@@ -179,6 +189,31 @@ export const runEnterpriseMigrationAndSeed = async () => {
           WHERE table_name='projects' AND column_name='live_url'
         ) THEN
           ALTER TABLE projects ADD COLUMN live_url VARCHAR(255);
+        END IF;
+        
+        -- GitHub Integration Columns for existing DBs
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='github_repo_owner') THEN
+          ALTER TABLE projects ADD COLUMN github_repo_owner VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='github_repo_name') THEN
+          ALTER TABLE projects ADD COLUMN github_repo_name VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='github_webhook_id') THEN
+          ALTER TABLE projects ADD COLUMN github_webhook_id VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='github_workflow_installed') THEN
+          ALTER TABLE projects ADD COLUMN github_workflow_installed BOOLEAN DEFAULT false;
+        END IF;
+        
+        -- Users GitHub Columns
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='github_id') THEN
+          ALTER TABLE users ADD COLUMN github_id VARCHAR(255) UNIQUE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='github_username') THEN
+          ALTER TABLE users ADD COLUMN github_username VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='github_access_token') THEN
+          ALTER TABLE users ADD COLUMN github_access_token TEXT;
         END IF;
       END $$;
     `);

@@ -169,6 +169,27 @@ export const SignupForm: React.FC = () => {
               Sign in
             </Link>
           </p>
+
+          {/* Divider */}
+          <div className="relative flex py-4 items-center select-none">
+            <div className="flex-grow border-t border-[#2A2A2A]/70"></div>
+            <span className="flex-shrink mx-4 font-mono text-[11px] text-neutral-500 uppercase tracking-widest">
+              OR
+            </span>
+            <div className="flex-grow border-t border-[#2A2A2A]/70"></div>
+          </div>
+
+          {/* Social Logins */}
+          <button
+            type="button"
+            onClick={() => window.location.href = 'https://microps.in/api/v1/github/auth'}
+            className="w-full flex items-center justify-center py-3 sm:py-3.5 border border-[#2A2A2A] rounded-sm hover:bg-[#1C1B1B] transition-colors group text-neutral-200 hover:text-white font-mono text-xs sm:text-sm gap-2.5"
+          >
+            <svg className="w-4 h-4 text-neutral-400 group-hover:text-[#D4AF37] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Continue with GitHub</span>
+          </button>
         </form>
       </div>
     </div>

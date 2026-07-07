@@ -6,6 +6,7 @@ import projectRoutes from './project.routes';
 import organizationRoutes from './organization.routes';
 import billingRoutes from './billing.routes';
 import dashboardRoutes from './dashboard.routes';
+import { githubRoutes } from './github.routes';
 
 const router = Router();
 
@@ -38,5 +39,8 @@ router.use('/billing', billingRoutes);
 
 // Dashboard overview endpoints
 router.use('/dashboard', dashboardRoutes);
+
+// GitHub BYOC integration endpoints
+router.use('/github', githubRoutes);
 
 export default router;

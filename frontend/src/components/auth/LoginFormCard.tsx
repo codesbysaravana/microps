@@ -138,7 +138,7 @@ export const LoginFormCard: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
         <button
           type="button"
-          onClick={() => alert('SSO login via GitHub will be enabled for your enterprise organization.')}
+          onClick={() => window.location.href = 'https://microps.in/api/v1/github/auth'}
           className="flex items-center justify-center py-3 border border-[#2A2A2A] rounded-sm hover:bg-[#1C1B1B] transition-colors group text-neutral-200 hover:text-white font-mono text-xs sm:text-sm gap-2.5"
         >
           <svg className="w-4 h-4 text-neutral-400 group-hover:text-[#D4AF37] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
