@@ -18,6 +18,8 @@ import {
 import { buildBus } from '../../utils/eventBus';
 import { decryptAESnGCM, EncryptedEnvPayload } from '../../utils/encryptEnv';
 import { updateProjectLiveUrlDB, updateProjectEcsMetadata } from '../../repository/project.repository';
+import { userRepository } from '../../repository/user.repository';
+import { emailService } from '../email.service';
 
 const ecsClient = new ECSClient({ region: process.env.AWS_REGION || 'ap-southeast-2' });
 const elbClient = new ElasticLoadBalancingV2Client({ region: process.env.AWS_REGION || 'ap-southeast-2' });
@@ -251,6 +253,14 @@ export const deployServiceECS = async (
         await updateProjectLiveUrlDB(userId, projectId || projectName, liveUrl);
         if (projectId) await updateProjectEcsMetadata(projectId, serviceName, familyName);
         buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Service updated successfully! App live at ${liveUrl}` });
+
+        // Non-blocking email notification
+        userRepository.findById(userId).then(user => {
+          if (user?.email && !user.email.includes('noreply.github.com')) {
+            emailService.sendDeploymentSuccessEmail(user.email, projectName, liveUrl).catch(console.error);
+          }
+        }).catch(console.error);
+
         return true;
       } catch (updateErr: any) {
         if (updateErr.name !== 'ServiceNotActiveException' && !updateErr.message?.includes('not ACTIVE')) {
@@ -303,10 +313,25 @@ export const deployServiceECS = async (
     if (projectId) await updateProjectEcsMetadata(projectId, serviceName, familyName);
     buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Deployed successfully! App will be live at ${liveUrl}` });
 
+    // Non-blocking email notification
+    userRepository.findById(userId).then(user => {
+      if (user?.email && !user.email.includes('noreply.github.com')) {
+        emailService.sendDeploymentSuccessEmail(user.email, projectName, liveUrl).catch(console.error);
+      }
+    }).catch(console.error);
+
     return true;
   } catch (err: any) {
     console.error('ERROR: FAILED DEPLOYMENT', err);
     buildBus.emit('build-progress', { userId, message: `❌ Deployment failed: ${err.message}` });
+    
+    // Non-blocking email notification
+    userRepository.findById(userId).then(user => {
+      if (user?.email && !user.email.includes('noreply.github.com')) {
+        emailService.sendDeploymentFailedEmail(user.email, projectName, err.message).catch(console.error);
+      }
+    }).catch(console.error);
+
     return false;
   }
 };

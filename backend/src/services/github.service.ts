@@ -1,5 +1,6 @@
 import { pool } from '../config/db';
 import * as jwt from 'jsonwebtoken';
+import { emailService } from './email.service';
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
@@ -47,7 +48,7 @@ export const githubService = {
     try {
       const email = githubUser.email || `${githubUser.login}@users.noreply.github.com`;
       const name = githubUser.name || githubUser.login;
-      
+
       const res = await client.query(`
         INSERT INTO users (name, email, github_id, github_username, github_access_token)
         VALUES ($1, $2, $3, $4, $5)
@@ -55,10 +56,16 @@ export const githubService = {
         SET github_id = EXCLUDED.github_id,
             github_username = EXCLUDED.github_username,
             github_access_token = EXCLUDED.github_access_token
-        RETURNING id, name, email, github_username
+        RETURNING id, name, email, github_username, (xmax = 0) AS is_new_insert
       `, [name, email, githubUser.id.toString(), githubUser.login, accessToken]);
 
       const user = res.rows[0];
+
+      // If this is a brand new signup, trigger the onboarding email in the background
+      if (user.is_new_insert && !email.includes('noreply.github.com')) {
+        emailService.sendWelcomeEmail(user.email, user.name).catch(console.error);
+      }
+
       const token = jwt.sign(
         { userId: user.id, email: user.email, name: user.name }, 
         JWT_SECRET, 
