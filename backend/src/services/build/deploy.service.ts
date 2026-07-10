@@ -17,7 +17,7 @@ import {
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import { buildBus } from '../../utils/eventBus';
 import { decryptAESnGCM, EncryptedEnvPayload } from '../../utils/encryptEnv';
-import { updateProjectLiveUrlDB } from '../../repository/project.repository';
+import { updateProjectLiveUrlDB, updateProjectEcsMetadata } from '../../repository/project.repository';
 
 const ecsClient = new ECSClient({ region: process.env.AWS_REGION || 'ap-southeast-2' });
 const elbClient = new ElasticLoadBalancingV2Client({ region: process.env.AWS_REGION || 'ap-southeast-2' });
@@ -249,6 +249,7 @@ export const deployServiceECS = async (
           })
         );
         await updateProjectLiveUrlDB(userId, projectId || projectName, liveUrl);
+        if (projectId) await updateProjectEcsMetadata(projectId, serviceName, familyName);
         buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Service updated successfully! App live at ${liveUrl}` });
         return true;
       } catch (updateErr: any) {
@@ -299,6 +300,7 @@ export const deployServiceECS = async (
     );
 
     await updateProjectLiveUrlDB(userId, projectId || projectName, liveUrl);
+    if (projectId) await updateProjectEcsMetadata(projectId, serviceName, familyName);
     buildBus.emit('build-progress', { userId, liveUrl, message: `[CD Engine] 🚀 Deployed successfully! App will be live at ${liveUrl}` });
 
     return true;

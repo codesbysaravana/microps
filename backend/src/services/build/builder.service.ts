@@ -6,6 +6,7 @@ import { runPreflightAnalysis } from '../preflight/engine.service';
 import { envStoreCreate } from '../../repository/env.repository';
 import { buildBus } from '../../utils/eventBus';
 import { EncryptedEnvPayload } from '../../utils/encryptEnv';
+import { getSandboxDockerBuildFlags, SANDBOX_CONFIG } from '../../config/build.sandbox';
 
 const AWS_REGION = process.env.AWS_REGION || 'ap-southeast-2';
 const ECR_REGISTRY_URL = process.env.ECR_REGISTRY_URL || '688567265418.dkr.ecr.ap-southeast-2.amazonaws.com';
@@ -190,8 +191,9 @@ else
   done
 fi
 
-echo "====== MicrOps Orchestrator: Building Docker Image ======"
-docker build --pull -t microps-registry/${projectName}:${uniqueJobId} .
+echo "====== MicrOps Orchestrator: Building Docker Image (Sandboxed) ======"
+# Sandbox: resource-limited build to prevent tenant code from exhausting host
+timeout ${SANDBOX_CONFIG.BUILD_TIMEOUT_SECONDS}s docker build --pull ${getSandboxDockerBuildFlags()} -t microps-registry/${projectName}:${uniqueJobId} .
 
 echo "====== MicrOps Orchestrator: Logging into AWS ECR ======"
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY_URL}

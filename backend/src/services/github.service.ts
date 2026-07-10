@@ -187,10 +187,15 @@ EOF
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
       - name: Notify MicrOps Backend
+        env:
+          MICROPS_PROJECT_ID: "${projectId}"
+          MICROPS_IMAGE_TAG: "project-${projectId}-\${{ github.sha }}"
+          MICROPS_REPO_OWNER: "\${{ github.repository_owner }}"
+          MICROPS_REPO_NAME: "\${{ github.event.repository.name }}"
         run: |
-          curl -X POST https://microps.in/api/v1/webhooks/github/completion \\
+          curl -s -X POST https://microps.in/api/v1/webhooks/github/completion \\
             -H "Content-Type: application/json" \\
-            -d '{"project_id": "${projectId}", "image_tag": "project-${projectId}-\${{ github.sha }}"}'
+            -d '{"project_id": "'$MICROPS_PROJECT_ID'", "image_tag": "'$MICROPS_IMAGE_TAG'", "repo_owner": "'$MICROPS_REPO_OWNER'", "repo_name": "'$MICROPS_REPO_NAME'"}'
       `.trim();
 
       const base64Content = Buffer.from(workflowYaml).toString('base64');

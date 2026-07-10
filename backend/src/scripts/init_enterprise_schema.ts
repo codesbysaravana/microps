@@ -205,6 +205,17 @@ export const runEnterpriseMigrationAndSeed = async () => {
           ALTER TABLE projects ADD COLUMN github_workflow_installed BOOLEAN DEFAULT false;
         END IF;
         
+        -- ECS Service Tracking Columns (multi-tenant isolation)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='ecs_service_name') THEN
+          ALTER TABLE projects ADD COLUMN ecs_service_name TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='ecs_task_family') THEN
+          ALTER TABLE projects ADD COLUMN ecs_task_family TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='last_deployed_at') THEN
+          ALTER TABLE projects ADD COLUMN last_deployed_at TIMESTAMP;
+        END IF;
+        
         -- Users GitHub Columns
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='github_id') THEN
           ALTER TABLE users ADD COLUMN github_id VARCHAR(255) UNIQUE;

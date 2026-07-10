@@ -127,3 +127,65 @@ export const updateProjectLiveUrlDB = async (
     return false;
   }
 };
+
+/**
+ * Persist ECS service name and task family after a successful deployment.
+ * This is critical for multi-tenant isolation: on redeploy, we look up
+ * the existing service name so UpdateService is used instead of CreateService.
+ */
+export const updateProjectEcsMetadata = async (
+  projectId: number,
+  serviceName: string,
+  taskFamily: string
+) => {
+  try {
+    const result = await pool.query(
+      `UPDATE projects 
+       SET ecs_service_name = $1, ecs_task_family = $2, last_deployed_at = NOW()
+       WHERE id = $3 
+       RETURNING id, ecs_service_name, ecs_task_family`,
+      [serviceName, taskFamily, projectId]
+    );
+    return result.rows.length > 0 ? result.rows[0] : false;
+  } catch (err) {
+    console.error('Error updating project ECS metadata:', err);
+    return false;
+  }
+};
+
+/**
+ * Look up the ECS service name for a project.
+ * Used by deploy.service.ts to decide UpdateService vs CreateService,
+ * and by the idle-scaler to enumerate active services.
+ */
+export const getProjectEcsMetadata = async (projectId: number) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, user_id, name, ecs_service_name, ecs_task_family, last_deployed_at, live_url
+       FROM projects WHERE id = $1`,
+      [projectId]
+    );
+    return result.rows.length > 0 ? result.rows[0] : null;
+  } catch (err) {
+    console.error('Error fetching project ECS metadata:', err);
+    return null;
+  }
+};
+
+/**
+ * Get all projects that have active ECS services (for idle-scaler).
+ */
+export const getActiveEcsProjects = async () => {
+  try {
+    const result = await pool.query(
+      `SELECT id, user_id, name, ecs_service_name, ecs_task_family, last_deployed_at
+       FROM projects 
+       WHERE ecs_service_name IS NOT NULL`
+    );
+    return result.rows;
+  } catch (err) {
+    console.error('Error fetching active ECS projects:', err);
+    return [];
+  }
+};
+

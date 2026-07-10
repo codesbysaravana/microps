@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 dotenv.config(); // fallback to default .env
 
 import { runEnterpriseMigrationAndSeed } from './scripts/init_enterprise_schema';
+import { startIdleScaler } from './jobs/idle-scaler.job';
 
 // Use port 8000 to avoid conflict with the learning server (which uses 5000)
 const PORT = process.env.PORT || 8000;
@@ -17,6 +18,9 @@ runEnterpriseMigrationAndSeed()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`[Backend API] Server is running on http://localhost:${PORT}`);
+      
+      // Start the idle-scale-to-zero job (runs every 5 minutes)
+      startIdleScaler();
     });
   })
   .catch((err) => {
