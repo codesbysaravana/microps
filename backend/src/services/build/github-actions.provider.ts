@@ -86,13 +86,14 @@ function cleanLogLines(rawLogs: string, startIndex: number): { cleanedChunk: str
   };
 }
 
-// FIX #7: Added maxAttempts (150 × 4s = 10 min) to prevent infinite polling
-const MAX_POLL_ATTEMPTS = 150;
+// FIX #7: Added maxAttempts (300 × 2s = 10 min) to prevent infinite polling
+const MAX_POLL_ATTEMPTS = 300;
 
 async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
   const runUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/runs/${runId}`;
   const jobsUrl = `https://api.github.com/repos/${getOwner()}/${getRepo()}/actions/runs/${runId}/jobs`;
   const seenSteps = new Set<string>();
+  const stepStartTimes = new Map<string, number>();
   let lastLogLineIndex = 0;
   let attempts = 0;
 
@@ -109,19 +110,27 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
           const job = jobsData.jobs[0];
           if (job.steps) {
             for (const step of job.steps) {
-              if (step.status === 'completed' && !seenSteps.has(step.number.toString())) {
-                seenSteps.add(step.number.toString());
+              const stepKey = step.number.toString();
+              
+              if (step.status === 'in_progress' && !seenSteps.has('exec_' + stepKey)) {
+                seenSteps.add('exec_' + stepKey);
+                stepStartTimes.set(stepKey, Date.now());
                 buildBus.emit('build-progress', {
                   userId,
                   jobId,
-                  message: `[GitHub Runner] Step completed: ${step.name} (${step.conclusion})`,
+                  message: `[GitHub Runner] ⏳ Executing: ${step.name}...`,
                 });
-              } else if (step.status === 'in_progress' && !seenSteps.has('exec_' + step.number)) {
-                seenSteps.add('exec_' + step.number);
+              } else if (step.status === 'completed' && !seenSteps.has(stepKey)) {
+                seenSteps.add(stepKey);
+                
+                const startTime = stepStartTimes.get(stepKey) || new Date(step.started_at).getTime();
+                const duration = Math.round((new Date(step.completed_at).getTime() - startTime) / 1000);
+                const icon = step.conclusion === 'success' ? '✅' : step.conclusion === 'skipped' ? '⏭️' : '❌';
+                
                 buildBus.emit('build-progress', {
                   userId,
                   jobId,
-                  message: `[GitHub Runner] Step executing: ${step.name}...`,
+                  message: `[GitHub Runner] ${icon} Completed: ${step.name} (took ${duration}s)`,
                 });
               }
             }
@@ -136,10 +145,11 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
               const { cleanedChunk, nextIndex } = cleanLogLines(rawLogs, lastLogLineIndex);
               lastLogLineIndex = nextIndex;
               if (cleanedChunk) {
+                // Dim/gray the raw stdout if the frontend supports it (or just prefix it)
                 buildBus.emit('build-progress', {
                   userId,
                   jobId,
-                  message: cleanedChunk,
+                  message: `\n> ${cleanedChunk.replace(/\n/g, '\n> ')}`,
                 });
               }
             }
@@ -148,12 +158,12 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
           }
 
           if (run.status === 'completed' && run.conclusion !== 'success') {
-            const tailLogs = rawLogs.split('\n').slice(-15).join('\n');
+            const tailLogs = rawLogs.split('\n').slice(-20).join('\n');
             if (tailLogs) {
               buildBus.emit('build-progress', {
                 userId,
                 jobId,
-                message: `\n[Runner Terminal Tail Logs]:\n${tailLogs}\n`,
+                message: `\n\n--- ❌ FATAL RUNNER ERROR: TERMINAL TAIL LOGS ---\n${tailLogs}\n-----------------------------------------------\n`,
               });
             }
             const diagnosticReport = await analyzeBuildFailure(rawLogs, jobId);
@@ -169,6 +179,14 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
     }
 
     if (run.status === 'completed') {
+      // Dump final full success summary
+      if (run.conclusion === 'success') {
+        buildBus.emit('build-progress', {
+          userId,
+          jobId,
+          message: `\n[GitHub Runner] 🎉 Build Pipeline Successfully Completed in ${Math.round((new Date(run.updated_at).getTime() - new Date(run.created_at).getTime()) / 1000)}s!`,
+        });
+      }
       return {
         buildNumber: run.run_number,
         result: run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE',
@@ -177,11 +195,12 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
       };
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    // Polling every 2 seconds for ultra-responsive step transitions
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   // FIX #7: Timeout reached — throw instead of hanging forever
-  throw new Error(`Build polling timed out after ${MAX_POLL_ATTEMPTS * 4} seconds. The GitHub Actions run may still be in progress.`);
+  throw new Error(`Build polling timed out after ${MAX_POLL_ATTEMPTS * 2} seconds. The GitHub Actions run may still be in progress.`);
 }
 
 export async function runBuildPipeline(tenantScript: string, jobId: string, userId: number) {

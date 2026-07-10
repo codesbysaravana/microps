@@ -53,6 +53,14 @@ export const handleBuildStream = async (req: Request, res: Response): Promise<vo
       'Access-Control-Allow-Origin': '*',
     });
 
+    // Send an immediate heartbeat to establish the connection
+    res.write(':\n\n');
+
+    // Send a heartbeat ping every 15 seconds to prevent browser/Nginx disconnects
+    const heartbeatInterval = setInterval(() => {
+      res.write(':\n\n');
+    }, 15000);
+
     const listener = (data: any) => {
       // Ensure tenants only see their own build logs
       if (data.userId && data.userId !== userId) return;
@@ -68,6 +76,7 @@ export const handleBuildStream = async (req: Request, res: Response): Promise<vo
     buildBus.on('build-progress', listener);
 
     req.on('close', () => {
+      clearInterval(heartbeatInterval);
       buildBus.off('build-progress', listener);
     });
   } catch (err: any) {
