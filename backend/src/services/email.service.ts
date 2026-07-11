@@ -36,6 +36,9 @@ export const emailService = {
       if (!response.ok) {
         const errorData = await response.text();
         console.error('[Email Service] Failed to send email via Resend:', errorData);
+      } else {
+        const data = await response.json();
+        console.log('[Email Service] Successfully accepted by Resend! Response:', data);
       }
     } catch (err) {
       console.error('[Email Service] Fatal error sending email:', err);
