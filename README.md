@@ -54,27 +54,56 @@ MicrOps is live on AWS in the **Sydney (`ap-southeast-2`)** region running under
 
 ## 🏛️ System Architecture Overview
 
-```
-[Client Web Browser / Dashboard] (microps.in)
-              │
-              ▼ (HTTP Port 80 / SSE Telemetry Stream)
-  [EC2 Elastic IP: 13.238.226.195 (Nginx Reverse Proxy)]
-              │
-       ┌──────┴──────────────────────────┐
-       ▼                                 ▼
-[Static SPA Assets]           [PM2 Cluster Node API: Port 8000]
-(/var/www/microps-frontend)             │
-       ▲ Synchronized                   ├──► [Neon Cloud PostgreSQL] (Relational Metadata)
-       │ via GitHub Actions             └──► [Redis 7.4 / BullMQ] (Async Build Queue)
-[AWS S3: microps-client]                            │
-                                                    ▼ (Remote Worker Dispatch)
-                                     [GitHub Actions Runner Vault VM]
-                                                    │
-                                                    ▼ (Docker Build & Tag)
-                                         [AWS ECR: microps-hq]
-                                                    │
-                                                    ▼ (Serverless Provisioning)
-                              [AWS ECS Fargate: microps-tenant-cluster]
+```mermaid
+graph TD
+    %% User Interfaces
+    User((User / Developer))
+    WebUI[MicrOps Dashboard<br/>React + Vite]
+    CLI[MicrOps CLI<br/>microps-cli]
+
+    %% External SaaS
+    GitHub[GitHub API / OAuth]
+    Stripe[Stripe Billing]
+    OpenAI[OpenAI Diagnostics]
+    NeonDB[(Neon PostgreSQL)]
+    Redis[(Redis Cache / BullMQ)]
+
+    %% MicrOps Core Backend
+    subgraph MicrOps Core [MicrOps Backend (EC2)]
+        API[Express API Gateway]
+        AuthSvc[Auth Service]
+        ProjSvc[Project Service]
+        DiagSvc[AI Diagnostic Engine]
+        BuildWorker[BullMQ Build Worker]
+    end
+
+    %% AWS Native Infrastructure (MicrOps Hosted)
+    subgraph MicrOps Cloud [MicrOps AWS Account]
+        ECR[Amazon ECR<br/>microps-hq]
+        ALB[Application Load Balancer]
+        ECS[ECS Fargate Cluster<br/>microps-tenant-cluster]
+    end
+
+    %% Connections
+    User -->|Uses| WebUI
+    User -->|Uses| CLI
+    WebUI <-->|REST API / SSE| API
+    CLI <-->|REST API| API
+
+    API <--> AuthSvc
+    API <--> ProjSvc
+    API <--> BuildWorker
+    API <--> DiagSvc
+
+    AuthSvc <--> GitHub
+    ProjSvc <--> NeonDB
+    BuildWorker <--> Redis
+    BuildWorker <--> OpenAI
+    ProjSvc <--> Stripe
+
+    BuildWorker -->|1. Build & Push| ECR
+    BuildWorker -->|2. Provision Task| ECS
+    ALB -->|Routes Traffic| ECS
 ```
 
 ---
