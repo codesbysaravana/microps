@@ -1,11 +1,13 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import app from './app';
 
+// Load environment variables BEFORE importing any application code
 const isDev = process.env.NODE_ENV === 'development' || process.argv.some(arg => arg.includes('ts-node') || arg.includes('nodemon'));
 const envFile = isDev ? '.env.development' : '.env.production';
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 dotenv.config(); // fallback to default .env
+
+import app from './app';
 
 import { runEnterpriseMigrationAndSeed } from './scripts/init_enterprise_schema';
 import { startIdleScaler } from './jobs/idle-scaler.job';
