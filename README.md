@@ -43,6 +43,13 @@ MicrOps is live on AWS in the **Sydney (`ap-southeast-2`)** region running under
 - **Zero Idle Infrastructure**: Provisions dedicated AWS ECS Fargate serverless tasks on demand within `microps-tenant-cluster`.
 - **Health Checks & ALB Attachment**: Seamlessly attaches active containers to AWS Application Load Balancer target groups (`microps-platform-backend-tg`) for production traffic routing.
 
+### 🔐 6. Bring Your Own Cloud (BYOC) via OIDC
+- **Zero-Trust Architecture**: Deploy directly to your own AWS account without sharing AWS access keys.
+- **GitHub Actions Integration**: MicrOps automatically injects a bespoke GitHub Actions workflow into your repository using secure `sts:AssumeRoleWithWebIdentity` OIDC flows.
+
+### 💻 7. MicrOps CLI (`microps-cli`)
+- **Native Terminal Experience**: Interact with your infrastructure directly from your IDE. Run `npm i -g microps-cli` to use `microps login`, `microps projects`, and `microps link` to rapidly connect and bind microservices to your AWS environment.
+
 ---
 
 ## 🏛️ System Architecture Overview
@@ -121,15 +128,8 @@ cd Microps/production
 # 2. Start local Redis instance via Docker
 docker run -d --name microps-redis -p 6379:6379 redis:latest
 
-# 3. Setup & start backend API
-cd backend
-npm install
-npm run build
-npm run start
-
-# 4. In a new terminal, start Vite frontend dev server
-cd ../frontend
-npm install
+# 3. Install dependencies and run both Backend & Frontend concurrently
+npm run install:all
 npm run dev
 ```
 
