@@ -8,6 +8,8 @@ import { buildBus } from '../../utils/eventBus';
 import { EncryptedEnvPayload } from '../../utils/encryptEnv';
 import { getSandboxDockerBuildFlags, SANDBOX_CONFIG } from '../../config/build.sandbox';
 import { analyzeBuildFailure } from '../diagnostics/diagnostic.engine';
+import { emailService } from '../email.service';
+import { userRepository } from '../../repository/user.repository';
 
 const MAX_AUTO_RETRIES = 2;
 
@@ -397,6 +399,13 @@ export const buildWorker = new Worker('tenant-builds', async (job) => {
         jobId,
         message: `[AI Agent] ⚠️ All ${MAX_AUTO_RETRIES + 1} attempts exhausted. Manual intervention required — use the "Apply Fix" button above.`,
       });
+
+      // Notify user via email that their build failed
+      userRepository.findById(userId).then(user => {
+        if (user?.email && !user.email.includes('noreply.github.com')) {
+          emailService.sendDeploymentFailedEmail(user.email, projectName, error.message).catch(console.error);
+        }
+      }).catch(console.error);
     }
     throw error;
   }
