@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { projectService, type Project } from '../services/projectService';
+import { useAuthStore } from '../store/useAuthStore';
+import { BASE_URL } from '../lib/api';
 import { Toast, EmptyState, ConfirmModal } from './ui/primitives';
 
 export interface ProjectsSectionProps {
@@ -52,6 +54,13 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
   const [editForm, setEditForm] = useState({ branch: '', buildCommand: '', installCommand: '' });
   const [saving, setSaving] = useState(false);
 
+  // Link Repo BYOC Modal States
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [githubRepos, setGithubRepos] = useState<any[]>([]);
+  const [linkingRepo, setLinkingRepo] = useState(false);
+  const [linkForm, setLinkForm] = useState({ projectId: '', repoFullName: '' });
+  const [fetchReposError, setFetchReposError] = useState('');
+
   const fetchProjects = async () => {
     setLoading(true);
     setError(null);
@@ -72,6 +81,67 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  const fetchGithubRepos = async () => {
+    setFetchReposError('');
+    try {
+      const token = useAuthStore.getState().token;
+      const res = await fetch(`${BASE_URL}/github/repos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.repos) {
+        setGithubRepos(data.repos);
+      } else {
+        setFetchReposError(data.message || 'Failed to fetch repositories.');
+      }
+    } catch (err: any) {
+      setFetchReposError(err.message || 'Failed to connect to GitHub.');
+    }
+  };
+
+  const handleOpenLinkModal = () => {
+    setIsLinkModalOpen(true);
+    if (githubRepos.length === 0) {
+      fetchGithubRepos();
+    }
+  };
+
+  const handleLinkRepo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkForm.projectId || !linkForm.repoFullName) return;
+    setLinkingRepo(true);
+
+    const repoDetails = githubRepos.find(r => r.full_name === linkForm.repoFullName);
+
+    try {
+      const token = useAuthStore.getState().token;
+      const res = await fetch(`${BASE_URL}/github/repos/install-runner`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          projectId: Number(linkForm.projectId),
+          owner: repoDetails.owner,
+          repoName: repoDetails.name
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setToastMessage({ msg: 'Successfully injected BYOC Workflow!', type: 'success' });
+        setIsLinkModalOpen(false);
+      } else {
+        throw new Error(data.message || 'Failed to inject workflow');
+      }
+    } catch (err: any) {
+      setToastMessage({ msg: err.message, type: 'error' });
+    } finally {
+      setLinkingRepo(false);
+    }
+  };
 
   const handleOpenEdit = (p: Project) => {
     setEditingProject(p);
@@ -185,6 +255,17 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+
+          {/* Link BYOC Button */}
+          <button
+            onClick={handleOpenLinkModal}
+            className="px-4 py-2 bg-surface-tertiary hover:bg-surface-elevated text-ivory border border-border-subtle hover:border-gold/30 font-mono text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <span>Link GitHub BYOC</span>
+          </button>
 
           {/* New Project Button */}
           <button
@@ -420,6 +501,89 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Link Repo BYOC Modal */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/80 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-border-subtle rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-4">
+              <h3 className="text-lg font-headline-md font-bold text-ivory">Link GitHub BYOC</h3>
+              <button
+                onClick={() => setIsLinkModalOpen(false)}
+                className="text-text-secondary hover:text-ivory transition p-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-xs text-text-secondary font-mono leading-relaxed">
+              Link a GitHub repository to automatically inject the MicrOps OIDC BYOC workflow. Every time you push to main, GitHub Actions will securely deploy the container to your AWS account.
+            </p>
+
+            {fetchReposError ? (
+              <div className="p-3 bg-error/10 border border-error/40 rounded-lg text-xs font-mono text-error">
+                {fetchReposError}
+                <div className="mt-2 text-text-muted">You must connect your GitHub account via the Integrations page or login with GitHub OAuth first.</div>
+              </div>
+            ) : (
+              <form onSubmit={handleLinkRepo} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+                    Select Project
+                  </label>
+                  <select
+                    value={linkForm.projectId}
+                    onChange={(e) => setLinkForm({ ...linkForm, projectId: e.target.value })}
+                    className="w-full bg-obsidian border border-border-subtle rounded-xl px-3.5 py-2.5 text-xs text-ivory focus:outline-none focus:border-gold font-mono transition"
+                    required
+                  >
+                    <option value="" disabled>-- Select a project --</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono font-semibold text-text-secondary uppercase tracking-wider mb-1.5">
+                    Select Repository
+                  </label>
+                  <select
+                    value={linkForm.repoFullName}
+                    onChange={(e) => setLinkForm({ ...linkForm, repoFullName: e.target.value })}
+                    className="w-full bg-obsidian border border-border-subtle rounded-xl px-3.5 py-2.5 text-xs text-ivory focus:outline-none focus:border-gold font-mono transition"
+                    required
+                  >
+                    <option value="" disabled>-- Select a repository --</option>
+                    {githubRepos.map((r) => (
+                      <option key={r.id} value={r.full_name}>{r.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsLinkModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-surface-tertiary hover:bg-surface-elevated text-text-secondary hover:text-ivory text-xs font-mono transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={linkingRepo || githubRepos.length === 0}
+                    className="px-5 py-2 rounded-xl bg-gold hover:bg-gold-hover disabled:opacity-50 text-obsidian font-mono font-bold text-xs transition shadow-lg shadow-gold/20 flex items-center gap-2"
+                  >
+                    {linkingRepo ? 'Injecting Workflow...' : 'Inject BYOC Action'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

@@ -12,6 +12,24 @@ module.exports = async function link() {
   const api = getApiClient();
 
   try {
+    console.log(chalk.gray('Fetching your MicrOps projects...'));
+    const projectsResponse = await api.get('/projects');
+    const projectsList = projectsResponse.data.data; // Note: using data.data based on earlier fixes
+
+    if (!projectsList || projectsList.length === 0) {
+      console.log(chalk.yellow('\nNo projects found. Please create a project in the web dashboard first.'));
+      process.exit(1);
+    }
+
+    const { selectedProject } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedProject',
+        message: 'Select a MicrOps project to link to:',
+        choices: projectsList.map(project => ({ name: project.name, value: project.id }))
+      }
+    ]);
+
     console.log(chalk.gray('Fetching your GitHub repositories...'));
     const reposResponse = await api.get('/github/repos');
     const reposList = reposResponse.data.repos;
@@ -25,7 +43,7 @@ module.exports = async function link() {
       {
         type: 'list',
         name: 'selectedRepo',
-        message: 'Select a repository to link to MicrOps:',
+        message: 'Select a repository to link to this project:',
         choices: reposList.map(repo => repo.full_name)
       }
     ]);
@@ -36,7 +54,8 @@ module.exports = async function link() {
     
     await api.post('/github/repos/install-runner', {
       owner: repoDetails.owner.login,
-      repo: repoDetails.name
+      repo: repoDetails.name,
+      projectId: selectedProject
     });
 
     console.log(chalk.green(`\n✓ Successfully linked ${selectedRepo}!`));
