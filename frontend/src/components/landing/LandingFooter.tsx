@@ -21,10 +21,10 @@ export const LandingFooter: React.FC = () => {
             PRODUCT
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Platform</a></li>
-            <li><a href="#features" className="hover:text-neutral-300 transition-colors block">Features</a></li>
-            <li><a href="#ai" className="hover:text-neutral-300 transition-colors block">Integrations</a></li>
-            <li><a href="#pricing" className="hover:text-neutral-300 transition-colors block">Pricing</a></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">Platform</Link></li>
+            <li><Link to="/integrations" className="hover:text-neutral-300 transition-colors block">Integrations</Link></li>
+            <li><a href="/#pricing" className="hover:text-neutral-300 transition-colors block">Pricing</a></li>
+            <li><Link to="/reviews" className="hover:text-neutral-300 transition-colors block">Customers</Link></li>
           </ul>
         </div>
 
@@ -34,10 +34,10 @@ export const LandingFooter: React.FC = () => {
             RESOURCES
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Documentation</a></li>
-            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">API Reference</a></li>
-            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Community</a></li>
-            <li><a href="#faq" className="hover:text-neutral-300 transition-colors block">Status</a></li>
+            <li><Link to="/docs" className="hover:text-neutral-300 transition-colors block">Documentation</Link></li>
+            <li><Link to="/docs" className="hover:text-neutral-300 transition-colors block">API Reference</Link></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">Community</Link></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">Status</Link></li>
           </ul>
         </div>
 
@@ -47,20 +47,20 @@ export const LandingFooter: React.FC = () => {
             COMPANY
           </div>
           <ul className="space-y-2.5 text-xs text-neutral-500 font-mono">
-            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">About Us</a></li>
-            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Careers</a></li>
-            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Blog</a></li>
-            <li><a href="#overview" className="hover:text-neutral-300 transition-colors block">Contact</a></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">About Us</Link></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">Careers</Link></li>
+            <li><Link to="/" className="hover:text-neutral-300 transition-colors block">Blog</Link></li>
+            <li><a href="mailto:contact@microps.in" className="hover:text-neutral-300 transition-colors block">Contact</a></li>
           </ul>
         </div>
       </div>
 
       {/* Copyright & Compliance Links */}
       <div className="mt-16 pt-8 border-t border-[#1C1B1B] flex flex-col sm:flex-row items-center justify-between text-xs font-mono text-neutral-600 gap-4">
-        <div>© 2024 MicrOps Inc. All rights reserved.</div>
+        <div>© 2026 MicrOps Inc. All rights reserved.</div>
         <div className="flex items-center gap-6">
-          <a href="#overview" className="hover:text-neutral-400 transition-colors">Privacy Policy</a>
-          <a href="#overview" className="hover:text-neutral-400 transition-colors">Terms of Service</a>
+          <Link to="/policy" className="hover:text-neutral-400 transition-colors">Privacy Policy</Link>
+          <Link to="/policy" className="hover:text-neutral-400 transition-colors">Terms of Service</Link>
         </div>
       </div>
     </footer>

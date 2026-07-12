@@ -18,24 +18,24 @@ export const LandingNavbar: React.FC = () => {
 
       {/* Center Navigation Tabs - Clean Editorial Storytelling */}
       <nav className="hidden lg:flex text-neutral-400 items-center gap-8 font-mono text-xs tracking-widest uppercase">
-        <a href="#overview" className="transition-colors hover:text-neutral-200">
+        <Link to="/" className="transition-colors hover:text-neutral-200">
           Platform
-        </a>
-        <a href="#pipeline" className="transition-colors hover:text-neutral-200">
+        </Link>
+        <a href="/#pipeline" className="transition-colors hover:text-neutral-200">
           Solutions
         </a>
-        <a href="#ai" className="transition-colors hover:text-neutral-200">
+        <Link to="/integrations" className="transition-colors hover:text-neutral-200">
           AI & Integrations
-        </a>
-        <a href="#enterprise" className="transition-colors hover:text-neutral-200">
-          Enterprise
-        </a>
-        <a href="#pricing" className="transition-colors hover:text-neutral-200">
+        </Link>
+        <Link to="/reviews" className="transition-colors hover:text-neutral-200">
+          Reviews
+        </Link>
+        <a href="/#pricing" className="transition-colors hover:text-neutral-200">
           Pricing
         </a>
-        <a href="#faq" className="transition-colors hover:text-neutral-200">
+        <Link to="/docs" className="transition-colors hover:text-neutral-200">
           Docs
-        </a>
+        </Link>
       </nav>
 
       {/* Right Action Center - Pure Marketing Separation */}
