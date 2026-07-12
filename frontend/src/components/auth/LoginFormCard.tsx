@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { loginSchema } from '../../lib/validations';
 import type { LoginInput } from '../../lib/validations';
 import { authService } from '../../services/authService';
@@ -10,7 +10,19 @@ import { useAuthStore } from '../../store/useAuthStore';
 export const LoginFormCard: React.FC = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
+  const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    const token = searchParams.get('token');
+    const authError = searchParams.get('error');
+    if (token) {
+      login(token);
+      navigate('/dashboard', { replace: true });
+    } else if (authError) {
+      setError('OAuth authentication failed. Please try again.');
+    }
+  }, [searchParams, login, navigate]);
 
   const {
     register,
