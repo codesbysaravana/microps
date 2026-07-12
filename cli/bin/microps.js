@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('microps')
   .description(chalk.yellow('MicrOps CLI - Precision cloud orchestration'))
-  .version('1.1.0');
+  .version(require('../package.json').version);
 
 // Login Command
 program

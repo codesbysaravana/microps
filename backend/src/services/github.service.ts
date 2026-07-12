@@ -128,6 +128,9 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: \${{ secrets.AWS_ROLE_ARN }}
+      AWS_REGION: \${{ secrets.AWS_REGION || 'ap-southeast-2' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -140,13 +143,20 @@ jobs:
             const token = await core.getIDToken('https://github.com/microps-hq');
             core.setOutput('token', token);
 
-      - name: Fetch Temporary AWS Credentials from MicrOps
+      - name: Configure AWS Credentials (BYOC OIDC)
+        if: \${{ env.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: \${{ env.AWS_ROLE_ARN }}
+          aws-region: \${{ env.AWS_REGION }}
+
+      - name: Fetch Temporary AWS Credentials (MicrOps Fallback)
+        if: \${{ env.AWS_ROLE_ARN == '' }}
         id: sts
         run: |
           RESPONSE=$(curl -s -X POST https://microps.in/api/v1/builds/aws-sts \\
             -H "Authorization: Bearer \${{ steps.oidc.outputs.token }}")
           
-          # Basic parsing without jq to minimize dependencies
           ACCESS_KEY=$(echo $RESPONSE | grep -o '"accessKeyId":"[^"]*' | cut -d'"' -f4)
           SECRET_KEY=$(echo $RESPONSE | grep -o '"secretAccessKey":"[^"]*' | cut -d'"' -f4)
           SESSION_TOKEN=$(echo $RESPONSE | grep -o '"sessionToken":"[^"]*' | cut -d'"' -f4)

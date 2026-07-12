@@ -41,6 +41,12 @@ module.exports = async function link() {
 
     console.log(chalk.green(`\n✓ Successfully linked ${selectedRepo}!`));
     console.log(chalk.gray(`The MicrOps GitHub Actions workflow has been installed in your repository.`));
+    
+    console.log(chalk.yellow(`\n☁️  [Optional] Bring Your Own Cloud (BYOC) Setup:`));
+    console.log(chalk.gray(`To deploy directly to your own AWS account securely (without giving us your access keys),`));
+    console.log(chalk.gray(`create an IAM OIDC Provider for GitHub Actions and add the following secret to your repo:`));
+    console.log(chalk.cyan(`  AWS_ROLE_ARN`));
+    console.log(chalk.gray(`If this secret is present, the pipeline will deploy to your AWS account. If not, it falls back to the MicrOps cloud.`));
 
   } catch (error) {
     console.log(chalk.red(`\n✕ Failed to link repository:`), error.response?.data?.message || error.message);
