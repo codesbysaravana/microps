@@ -276,3 +276,8 @@ cypress/screenshots/
 !README.md
 !readme.md
 !README.MD
+v2v3plan
+LOCAL_ARCHITECTURE_PROPER_DRAWINGS
+iam-policy.json
+iam-trust-policy.json
+backend-deploy.tar.gz
