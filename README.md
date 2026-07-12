@@ -69,7 +69,7 @@ graph TD
     Redis[(Redis Cache / BullMQ)]
 
     %% MicrOps Core Backend
-    subgraph MicrOps Core [MicrOps Backend (EC2)]
+    subgraph MicrOpsCore ["MicrOps Backend (EC2)"]
         API[Express API Gateway]
         AuthSvc[Auth Service]
         ProjSvc[Project Service]
@@ -78,7 +78,7 @@ graph TD
     end
 
     %% AWS Native Infrastructure (MicrOps Hosted)
-    subgraph MicrOps Cloud [MicrOps AWS Account]
+    subgraph MicrOpsCloud ["MicrOps AWS Account"]
         ECR[Amazon ECR<br/>microps-hq]
         ALB[Application Load Balancer]
         ECS[ECS Fargate Cluster<br/>microps-tenant-cluster]
