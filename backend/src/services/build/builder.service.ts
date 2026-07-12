@@ -261,7 +261,10 @@ export const buildWorker = new Worker('tenant-builds', async (job) => {
       await deployServiceECS(userId, cleanProjectName, imageURI, encryptedGCM, projectId);
       return finalStatus;
     } else {
-      throw new Error(`Cloud Container Build Failed with status: ${finalStatus.result}`);
+      const err: any = new Error(`Cloud Container Build Failed with status: ${finalStatus.result}`);
+      err.diagnosticReport = (finalStatus as any).diagnosticReport;
+      err.rawLogs = (finalStatus as any).rawLogs;
+      throw err;
     }
   } catch (error: any) {
     console.error(`[WORKER] Error processing job ${jobId} (attempt ${attempt}):`, error.message);
@@ -269,8 +272,11 @@ export const buildWorker = new Worker('tenant-builds', async (job) => {
     // --- Autonomous Self-Healing Retry Loop ---
     if (attempt <= MAX_AUTO_RETRIES) {
       try {
-        // Analyze what went wrong
-        const diagnostic = await analyzeBuildFailure(error.message || '', jobId, runtime);
+        // Analyze what went wrong using the pre-computed diagnostic report, or fallback to real raw logs
+        let diagnostic = error.diagnosticReport;
+        if (!diagnostic) {
+          diagnostic = await analyzeBuildFailure(error.rawLogs || error.message || '', jobId, runtime);
+        }
 
         // Only auto-apply safe, deterministic fixes (not probabilistic AI suggestions)
         if (diagnostic.fixAction && SAFE_AUTO_FIX_RULES.has(diagnostic.ruleId)) {

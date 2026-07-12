@@ -96,6 +96,8 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
   const stepStartTimes = new Map<string, number>();
   let lastLogLineIndex = 0;
   let attempts = 0;
+  let finalDiagnosticReport: any = null;
+  let finalRawLogs = '';
 
   while (attempts < MAX_POLL_ATTEMPTS) {
     attempts++;
@@ -166,10 +168,11 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
                 message: `\n\n--- ❌ FATAL RUNNER ERROR: TERMINAL TAIL LOGS ---\n${tailLogs}\n-----------------------------------------------\n`,
               });
             }
-            const diagnosticReport = await analyzeBuildFailure(rawLogs, jobId);
+            finalRawLogs = rawLogs;
+            finalDiagnosticReport = await analyzeBuildFailure(rawLogs, jobId);
             buildBus.emit('build-progress', {
               userId,
-              ...diagnosticReport,
+              ...finalDiagnosticReport,
             });
           }
         }
@@ -192,6 +195,8 @@ async function pollWorkflowRun(runId: string, jobId: string, userId: number) {
         result: run.conclusion === 'success' ? 'SUCCESS' : 'FAILURE',
         duration: Math.round((new Date(run.updated_at).getTime() - new Date(run.created_at).getTime()) / 1000),
         url: run.html_url,
+        diagnosticReport: finalDiagnosticReport,
+        rawLogs: finalRawLogs,
       };
     }
 
