@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { projectService, type Project } from '../services/projectService';
-import { Toast, EmptyState } from './ui/primitives';
+import { Toast, EmptyState, ConfirmModal } from './ui/primitives';
 
 export interface ProjectsSectionProps {
   onNewProject?: () => void;
@@ -48,6 +48,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
   const [toastMessage, setToastMessage] = useState<{ msg: string; type: 'info' | 'success' | 'error' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<{ id: number; name: string } | null>(null);
   const [editForm, setEditForm] = useState({ branch: '', buildCommand: '', installCommand: '' });
   const [saving, setSaving] = useState(false);
 
@@ -97,16 +98,21 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete project "${name}"? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteClick = (id: number, name: string) => {
+    setProjectToDelete({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!projectToDelete) return;
+    const { id, name } = projectToDelete;
     try {
       await projectService.deleteProject(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
       setToastMessage({ msg: `Project "${name}" deleted.`, type: 'info' });
     } catch (err: any) {
       setToastMessage({ msg: err.message || 'Failed to delete project', type: 'error' });
+    } finally {
+      setProjectToDelete(null);
     }
   };
 
@@ -143,6 +149,16 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
       {toastMessage && (
         <Toast message={toastMessage.msg} type={toastMessage.type} onDismiss={() => setToastMessage(null)} />
       )}
+
+      <ConfirmModal
+        isOpen={projectToDelete !== null}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${projectToDelete?.name}"? This action cannot be undone and will permanently remove all associated resources.`}
+        confirmText="Delete Project"
+        onConfirm={confirmDelete}
+        onCancel={() => setProjectToDelete(null)}
+        variant="danger"
+      />
 
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border-subtle/40">
@@ -253,7 +269,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ onNewProject }
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(project.id, project.name)}
+                        onClick={() => handleDeleteClick(project.id, project.name)}
                         title="Delete Project"
                         className="p-1.5 rounded-lg bg-error/10 hover:bg-error/20 text-error/80 hover:text-error border border-error/30 transition"
                       >

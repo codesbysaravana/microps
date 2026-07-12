@@ -274,3 +274,57 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onDismiss 
     </div>
   );
 };
+
+// ── ConfirmModal ──────────────────────────────
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  variant?: 'danger' | 'primary';
+}
+
+export const ConfirmModal: React.FC<ConfirmModalProps> = ({
+  isOpen,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  onConfirm,
+  onCancel,
+  variant = 'danger',
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-obsidian/80 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="bg-surface-elevated border border-border-subtle rounded-xl w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
+        <div className="p-6">
+          <h3 className="text-xl font-bold text-ivory mb-2">{title}</h3>
+          <p className="text-text-secondary text-sm leading-relaxed">{message}</p>
+        </div>
+        <div className="px-6 py-4 bg-surface-tertiary/30 border-t border-border-subtle flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-ivory hover:bg-surface-tertiary transition-colors"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              variant === 'danger'
+                ? 'bg-error/10 text-error hover:bg-error hover:text-ivory border border-error/30 hover:border-error'
+                : 'bg-gold/10 text-gold hover:bg-gold hover:text-obsidian border border-gold/30 hover:border-gold'
+            }`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

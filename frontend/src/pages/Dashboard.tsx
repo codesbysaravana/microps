@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { preflightService } from '../services/preflightService';
 import type { PreflightReport } from '../services/preflightService';
@@ -30,6 +30,18 @@ export const Dashboard: React.FC = () => {
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -275,15 +287,36 @@ export const Dashboard: React.FC = () => {
               <span>AWS ECS Fargate: Active</span>
             </div>
 
-            {/* Profile Avatar */}
-            <div
-              onClick={handleLogout}
-              title={`Logged in as ${user?.name || 'Operator'} (Click to Logout)`}
-              className="w-8 h-8 rounded-full border border-border-subtle bg-surface-tertiary flex items-center justify-center text-ivory font-bold cursor-pointer hover:border-gold transition-colors"
-            >
-              <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            {/* Profile Menu */}
+            <div className="relative" ref={profileMenuRef}>
+              <div
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                title={`Logged in as ${user?.name || 'Operator'}`}
+                className="w-8 h-8 rounded-full border border-border-subtle bg-surface-tertiary flex items-center justify-center text-ivory font-bold cursor-pointer hover:border-gold transition-colors select-none"
+              >
+                <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-surface-elevated border border-border-subtle rounded-lg shadow-2xl py-2 animate-scaleIn z-[150] font-sans">
+                  <div className="px-4 py-2 border-b border-border-subtle/50 mb-1">
+                    <p className="text-sm font-semibold text-ivory truncate">{user?.name || 'Operator'}</p>
+                    <p className="text-xs text-text-muted truncate mt-0.5">{user?.email || 'admin@microps.in'}</p>
+                  </div>
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-error/90 hover:bg-error/10 hover:text-error transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
