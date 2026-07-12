@@ -63,6 +63,8 @@ export const runPreflightAnalysis = async (repoUrl: string): Promise<PreflightRe
       runtime: activeDetection.runtime,
       framework: activeDetection.framework,
       port: activeDetection.detectedPort,
+      deployType: activeDetection.deployType,
+      packageManager: activeDetection.packageManager,
     },
     environment: {
       requiredVars: activeDetection.requiredEnvVars,
@@ -75,5 +77,6 @@ export const runPreflightAnalysis = async (repoUrl: string): Promise<PreflightRe
       infrastructureMonthly: Number(ecrAndAlbMonthly.toFixed(2)),
       totalMonthly: Number(totalMonthly.toFixed(2)),
     },
+    preflightFixes: activeDetection.preflightFixes,
   };
 };

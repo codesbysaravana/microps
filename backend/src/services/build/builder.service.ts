@@ -1,12 +1,29 @@
 import { Queue, Worker } from 'bullmq';
 import { runBuildPipeline } from './github-actions.provider';
-import { projectsDB } from '../../repository/project.repository';
+import { projectsDB, applyProjectFixDB } from '../../repository/project.repository';
 import { deployServiceECS } from './deploy.service';
 import { runPreflightAnalysis } from '../preflight/engine.service';
 import { envStoreCreate } from '../../repository/env.repository';
 import { buildBus } from '../../utils/eventBus';
 import { EncryptedEnvPayload } from '../../utils/encryptEnv';
 import { getSandboxDockerBuildFlags, SANDBOX_CONFIG } from '../../config/build.sandbox';
+import { analyzeBuildFailure } from '../diagnostics/diagnostic.engine';
+
+const MAX_AUTO_RETRIES = 2;
+
+// Safe, deterministic rule IDs that can be auto-applied without user confirmation
+const SAFE_AUTO_FIX_RULES = new Set([
+  'NPM_PEER_DEPS_CONFLICT',
+  'COMMAND_BINARY_MISSING',
+  'NODE_ENGINE_MISMATCH',
+  'MISSING_BUILD_SCRIPT',
+  'MISSING_START_SCRIPT',
+  'TS_COMPILATION_ERRORS',
+  'VITE_BUILD_FAIL',
+  'PORT_BIND_CONFLICT',
+  'PERMISSION_DENIED',
+  'PYTHON_MODULE_NOT_FOUND',
+]);
 
 const AWS_REGION = process.env.AWS_REGION || 'ap-southeast-2';
 const ECR_REGISTRY_URL = process.env.ECR_REGISTRY_URL || '688567265418.dkr.ecr.ap-southeast-2.amazonaws.com';
@@ -52,6 +69,18 @@ export const buildInitializer = async (
   if (!preflightObj.success) {
     buildBus.emit('build-progress', { userId, message: '❌ Pre-Flight Blockers detected. Deployment halted to save build minutes.' });
     return { status: 'Halted', reason: 'Pre-flight failed' };
+  }
+
+  // v2: Auto-apply preflight fixes before burning build minutes
+  if (preflightObj.preflightFixes && preflightObj.preflightFixes.length > 0 && !customOverrides?.installCommand && !customOverrides?.buildCommand) {
+    for (const fix of preflightObj.preflightFixes) {
+      buildBus.emit('build-progress', { userId, message: `[AI Preflight] 🔧 Auto-applying: ${fix.value} (${fix.reason})` });
+      if (fix.fix === 'SET_INSTALL_CMD') {
+        customOverrides = { ...customOverrides, installCommand: fix.value };
+      } else if (fix.fix === 'SET_BUILD_CMD') {
+        customOverrides = { ...customOverrides, buildCommand: fix.value };
+      }
+    }
   }
 
   buildBus.emit('build-progress', { userId, message: '<------ Starting Build Stage ------>' });
@@ -216,11 +245,12 @@ echo "Build & Push completed successfully!"
 
 export const buildWorker = new Worker('tenant-builds', async (job) => {
   const { repoUrl, branch, buildCommand, projectName, jobId, userId, encryptedGCM, installCommand, runtime, projectId } = job.data;
+  const attempt = job.data.attempt || 1;
   const cleanProjectName = sanitizeProjectName(projectName, repoUrl);
 
   try {
     const tenantScript = generateTenantScript(repoUrl, branch, buildCommand, cleanProjectName, jobId, userId, installCommand, runtime);
-    buildBus.emit('build-progress', { userId, jobId, message: '<------ Build running started by the worker ------>' });
+    buildBus.emit('build-progress', { userId, jobId, message: `<------ Build running started by the worker (attempt ${attempt} of ${MAX_AUTO_RETRIES + 1}) ------>` });
     
     const finalStatus = await runBuildPipeline(tenantScript, jobId, userId);
 
@@ -234,8 +264,76 @@ export const buildWorker = new Worker('tenant-builds', async (job) => {
       throw new Error(`Cloud Container Build Failed with status: ${finalStatus.result}`);
     }
   } catch (error: any) {
-    console.error(`[WORKER] Error processing job ${jobId}:`, error.message);
+    console.error(`[WORKER] Error processing job ${jobId} (attempt ${attempt}):`, error.message);
+
+    // --- Autonomous Self-Healing Retry Loop ---
+    if (attempt <= MAX_AUTO_RETRIES) {
+      try {
+        // Analyze what went wrong
+        const diagnostic = await analyzeBuildFailure(error.message || '', jobId, runtime);
+
+        // Only auto-apply safe, deterministic fixes (not probabilistic AI suggestions)
+        if (diagnostic.fixAction && SAFE_AUTO_FIX_RULES.has(diagnostic.ruleId)) {
+          buildBus.emit('build-progress', {
+            userId,
+            jobId,
+            message: `[AI Agent] 🔍 Diagnosed: ${diagnostic.failureTitle}`,
+          });
+          buildBus.emit('build-progress', {
+            userId,
+            jobId,
+            message: `[AI Agent] 🔧 Auto-applying fix: ${diagnostic.fixAction.label}`,
+          });
+
+          // Persist the fix to the project database record
+          const fixPayload = diagnostic.fixAction.payload;
+          const updates: { installCommand?: string; buildCommand?: string; language?: string } = {};
+          if (fixPayload.installCommand) updates.installCommand = fixPayload.installCommand;
+          if (fixPayload.buildCommand) updates.buildCommand = fixPayload.buildCommand;
+          if (fixPayload.targetValue) updates.language = fixPayload.targetValue;
+
+          if (projectId && Object.keys(updates).length > 0) {
+            await applyProjectFixDB(userId, projectId, updates);
+          }
+
+          // Re-queue the build with the patched config
+          const retryJobId = `build-retry-${attempt}-${Date.now()}`;
+          buildBus.emit('build-progress', {
+            userId,
+            jobId,
+            message: `[AI Agent] 🔄 Retrying build (attempt ${attempt + 1} of ${MAX_AUTO_RETRIES + 1})...`,
+          });
+
+          await buildQueue.add('execute-build', {
+            userId,
+            repoUrl,
+            branch,
+            buildCommand: fixPayload.buildCommand || buildCommand,
+            projectName: cleanProjectName,
+            runtime: fixPayload.targetValue || runtime,
+            installCommand: fixPayload.installCommand || installCommand,
+            jobId: retryJobId,
+            encryptedGCM,
+            projectId,
+            attempt: attempt + 1,
+          });
+
+          return; // Exit this worker cleanly — the retry job will handle the rest
+        }
+      } catch (retryErr: any) {
+        console.error(`[WORKER] Self-healing retry failed:`, retryErr.message);
+      }
+    }
+
+    // If we exhausted retries or the fix isn't safe to auto-apply, show the error
     buildBus.emit('build-progress', { userId, jobId, message: `❌ WORKER FAILED: ${error.message}` });
+    if (attempt > MAX_AUTO_RETRIES) {
+      buildBus.emit('build-progress', {
+        userId,
+        jobId,
+        message: `[AI Agent] ⚠️ All ${MAX_AUTO_RETRIES + 1} attempts exhausted. Manual intervention required — use the "Apply Fix" button above.`,
+      });
+    }
     throw error;
   }
-}, { connection: redisConnection });
+}, { connection: redisConnection, concurrency: 5 });

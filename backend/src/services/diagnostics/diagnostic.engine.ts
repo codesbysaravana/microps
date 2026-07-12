@@ -161,6 +161,141 @@ export async function analyzeBuildFailure(rawLogs: string, jobId: string, runtim
     };
   }
 
+  // Rule 7: TypeScript Compilation Errors (bulk TS errors)
+  if (/error TS\d+:/i.test(logs)) {
+    const tsErrorCount = (logs.match(/error TS\d+:/g) || []).length;
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'TS_COMPILATION_ERRORS',
+      jobId,
+      failureTitle: `❌ Build failed: ${tsErrorCount} TypeScript compilation error(s).`,
+      rootCause: `TypeScript compiler (tsc) encountered ${tsErrorCount} type-checking error(s) that blocked compilation.`,
+      detected: `${tsErrorCount} TS errors`,
+      probability: '99%',
+      fixAction: {
+        label: 'Enable skipLibCheck to bypass third-party type errors',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'npx tsc --skipLibCheck && npm run build --if-present',
+        },
+      },
+    };
+  }
+
+  // Rule 8: Vite Build Failure
+  if (/vite.*error|Could not resolve|Build failed|rollup.*error/i.test(logs) && !/Missing script/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'VITE_BUILD_FAIL',
+      jobId,
+      failureTitle: '❌ Build failed: Vite/Rollup bundler error.',
+      rootCause: 'Vite or Rollup encountered an unresolvable import, missing module, or configuration error during bundling.',
+      detected: 'Vite/Rollup Build Pipeline',
+      probability: '96%',
+      fixAction: {
+        label: 'Rebuild with explicit Vite build command',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'npx vite build',
+        },
+      },
+    };
+  }
+
+  // Rule 9: Docker COPY Failed (missing file in context)
+  if (/COPY failed:.*not found|file not found|lstat.*no such file/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'DOCKER_COPY_FAIL',
+      jobId,
+      failureTitle: '❌ Build failed: Docker COPY target not found.',
+      rootCause: 'Dockerfile references a file or directory that does not exist in the build context. Check .dockerignore or COPY paths.',
+      detected: 'Dockerfile COPY instruction',
+      probability: '99%',
+      fixAction: {
+        label: 'Use MicrOps auto-generated Dockerfile instead',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'npm run build --if-present',
+        },
+      },
+    };
+  }
+
+  // Rule 10: Port Bind Conflict
+  if (/EADDRINUSE|address already in use|port.*already.*bound/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'PORT_BIND_CONFLICT',
+      jobId,
+      failureTitle: '❌ Runtime failed: Port already in use.',
+      rootCause: 'Application is trying to bind to a port that is already occupied inside the container.',
+      detected: 'EADDRINUSE',
+      probability: '98%',
+      fixAction: {
+        label: 'Force PORT=3000 environment variable',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_ENV_PORT',
+        payload: {
+          actionType: 'SET_ENV_PORT',
+          env: { PORT: '3000' },
+        },
+      },
+    };
+  }
+
+  // Rule 11: Python Module Not Found
+  if (/ModuleNotFoundError|No module named|ImportError/i.test(logs)) {
+    const moduleMatch = logs.match(/No module named ['"]([^'"]+)['"]/i);
+    const moduleName = moduleMatch ? moduleMatch[1] : 'unknown';
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'PYTHON_MODULE_NOT_FOUND',
+      jobId,
+      failureTitle: `❌ Runtime failed: Python module "${moduleName}" not found.`,
+      rootCause: `Python cannot locate the module "${moduleName}". It may be missing from requirements.txt or the virtual environment.`,
+      detected: `ModuleNotFoundError: ${moduleName}`,
+      probability: '97%',
+      fixAction: {
+        label: `Add ${moduleName} to install command`,
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'PATCH_INSTALL_CMD',
+        payload: {
+          actionType: 'PATCH_INSTALL_CMD',
+          installCommand: `pip install -r requirements.txt && pip install ${moduleName}`,
+        },
+      },
+    };
+  }
+
+  // Rule 12: Permission Denied
+  if (/EACCES|permission denied|Operation not permitted/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'PERMISSION_DENIED',
+      jobId,
+      failureTitle: '❌ Build failed: Permission denied in container.',
+      rootCause: 'A file operation was blocked due to insufficient permissions inside the Docker container filesystem.',
+      detected: 'EACCES / Permission Denied',
+      probability: '95%',
+      fixAction: {
+        label: 'Force install with elevated permissions',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'PATCH_INSTALL_CMD',
+        payload: {
+          actionType: 'PATCH_INSTALL_CMD',
+          installCommand: 'npm install --unsafe-perm --legacy-peer-deps',
+        },
+      },
+    };
+  }
+
   // Tier-2: AI Autonomous Diagnostic Agent (OpenAI LLM Call with JSON Schema structuring)
   const aiReport = await callOpenAiDiagnosticAgent(logs, jobId, runtime);
   if (aiReport) {

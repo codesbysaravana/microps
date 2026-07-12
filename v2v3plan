@@ -1,0 +1,130 @@
+# Implementation Plan: AI Self-Healing Build Engine v2
+
+## The Vision (Marketing Pitch)
+
+> **"MicrOps doesn't just deploy your code. It fixes it."**
+>
+> Every other platform (Vercel, Railway, Render) shows you a red error and says "fix it yourself." MicrOps is the only deployment platform with a **Principal DevOps AI Agent** that reads the failure logs, diagnoses the root cause, patches your build config, and **autonomously retries the deployment** — all before you even read the error message.
+
+---
+
+## Current State (What You Have)
+
+| Layer | Status | Gaps |
+|-------|--------|------|
+| **Preflight Scanner** | ✅ Scans repo file tree, detects runtime/framework | Only checks file presence. Doesn't read `tsconfig.json`, doesn't validate `vite.config`, doesn't check for TypeScript strict errors. |
+| **Diagnostic Engine (Tier-1)** | ✅ 6 regex rules for common failures | Rules are reactive (post-failure). No detection for TS errors, ESLint, missing env vars in code, or monorepo structures. |
+| **Diagnostic Engine (Tier-2)** | ✅ OpenAI GPT-4o-mini fallback | Good, but it only suggests a fix — it doesn't **apply** it automatically. The user must click "Apply Fix" manually. |
+| **Apply Fix** | ✅ 1-click button in Dashboard | Only patches `installCommand`, `buildCommand`, or `runtime`. Cannot patch Dockerfile, cannot add missing dependencies, cannot fix TypeScript config. |
+
+---
+
+## Proposed Changes
+
+### Phase 1: Supercharged Preflight (Pre-Build Intelligence)
+
+#### [MODIFY] `backend/src/services/preflight/detectors.service.ts`
+
+Upgrade the Node.js detector to deeply analyze the repo before a single build minute is burned:
+
+- **TypeScript Awareness:** If `tsconfig.json` exists, fetch and parse it. Check for `strict: true`, `noEmit`, missing `outDir`. Warn the user if their config will cause `tsc` to fail silently.
+- **Vite/React Detection:** If `vite.config.ts` or `vite.config.js` exists, detect it as a Vite SPA. Auto-set `buildCommand` to `npx vite build` and `startCommand` to `npx serve -s dist -l 3000`. This eliminates the #1 failure mode for React apps.
+- **Monorepo Detection:** If `package.json` has a `workspaces` field, or if `pnpm-workspace.yaml` exists, flag it and warn the user to specify the correct sub-directory.
+- **Lock File Intelligence:** Check if `package-lock.json`, `yarn.lock`, or `pnpm-lock.yaml` exists. Auto-select the correct package manager (`npm`, `yarn`, `pnpm`) instead of always defaulting to `npm install`.
+- **Missing Start Script Detection:** Pre-read `package.json` scripts. If there's no `start` script and a `build` script outputs to `dist/` or `build/`, proactively configure `serve -s dist` as the start command.
+
+#### [MODIFY] `backend/src/services/preflight/engine.service.ts`
+
+- Add a new `preflightFixes` array to the report. Instead of just returning warnings, return **actionable auto-patches** that the build pipeline can consume without user intervention.
+- Example: `{ fix: 'SET_INSTALL_CMD', value: 'yarn install --frozen-lockfile', reason: 'yarn.lock detected' }`
+
+---
+
+### Phase 2: Expanded Diagnostic Rules (Post-Failure Intelligence)
+
+#### [MODIFY] `backend/src/services/diagnostics/diagnostic.engine.ts`
+
+Add 6 new high-value regex rules before the OpenAI fallback:
+
+| Rule ID | Pattern | Fix |
+|---------|---------|-----|
+| `TS_COMPILATION_ERRORS` | `error TS\d+:` (bulk TypeScript errors) | Suggest `npx tsc --noEmit false` or skip type-checking with `"skipLibCheck": true` |
+| `VITE_BUILD_FAIL` | `vite.*error\|Build failed\|Could not resolve` | Patch build command to `npx vite build` with correct base path |
+| `DOCKER_COPY_FAIL` | `COPY failed:.*not found\|file not found` | Detect missing files referenced in Dockerfile, suggest `.dockerignore` fix |
+| `PORT_BIND_CONFLICT` | `EADDRINUSE\|address already in use` | Set `PORT=3000` env override |
+| `PYTHON_MODULE_NOT_FOUND` | `ModuleNotFoundError\|No module named` | Suggest `pip install <module>` patch to install command |
+| `PERMISSION_DENIED` | `EACCES\|permission denied` | Patch Dockerfile to add `RUN chmod -R 755` before CMD |
+
+---
+
+### Phase 3: Autonomous Retry Loop (The Killer Feature)
+
+This is what makes MicrOps unlike anything else on the market.
+
+#### [MODIFY] `backend/src/services/build/builder.service.ts`
+
+After a build failure, instead of just showing the diagnostic report and waiting for the user to click "Apply Fix":
+
+1. The diagnostic engine returns a `fixAction`.
+2. **If the fix is a safe, deterministic patch** (e.g., `PATCH_INSTALL_CMD`, `SET_BUILD_CMD`, `UPGRADE_RUNTIME`), the worker **automatically applies the fix to the project record in the database** and **re-queues a new build job** — all without user intervention.
+3. Cap the auto-retry at **2 attempts** (original + 2 retries = 3 total tries max) to prevent infinite loops.
+4. Emit structured SSE events so the frontend shows the user exactly what happened:
+   - `[AI Agent] ❌ Build failed: Peer dependency conflict detected.`
+   - `[AI Agent] 🔧 Auto-applying fix: npm install --legacy-peer-deps`
+   - `[AI Agent] 🔄 Retrying build (attempt 2 of 3)...`
+5. If all 3 attempts fail, show the final diagnostic report with the manual "Apply Fix" button as a last resort.
+
+#### [MODIFY] `backend/src/controllers/build.controller.ts`
+
+No changes needed — the SSE stream already handles `build-progress` events, so the retry loop logs will automatically flow to the frontend in real-time.
+
+---
+
+### Phase 4: Frontend & Backend Deployment Separation
+
+#### [MODIFY] `backend/src/services/preflight/detectors.service.ts`
+
+Add smart classification so MicrOps knows whether a repo is a **frontend SPA**, **backend API**, or **fullstack monorepo**:
+
+| Signal | Classification | Behavior |
+|--------|---------------|----------|
+| Has `vite.config.*` or `next.config.*` + no `express`/`fastapi` | **Frontend SPA** | Build → serve static files via `serve -s dist` |
+| Has `express`, `fastapi`, `@nestjs/core`, `django` | **Backend API** | Build → run `npm start` / `uvicorn` |
+| Has both frontend framework + backend framework | **Fullstack Monorepo** | Warn user, ask which directory to deploy |
+| Has `Dockerfile` | **Custom Container** | Trust the user's Dockerfile completely |
+
+This classification will be stored in the project record and used by the Dockerfile generator to pick the optimal container strategy.
+
+---
+
+## Marketing One-Liner for Each Feature
+
+| Feature | Pitch |
+|---------|-------|
+| **Deep Preflight** | "MicrOps reads your entire codebase before burning a single build minute." |
+| **AI Diagnostic Agent** | "A Principal DevOps Engineer analyzes every failure and prescribes the exact fix." |
+| **Autonomous Self-Healing** | "MicrOps automatically patches and retries your build. Most failures resolve themselves." |
+| **Smart Deployment Classification** | "Frontend? Backend? Monorepo? MicrOps auto-detects your stack and picks the perfect container strategy." |
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Auto-retry scope:** Should the autonomous retry loop apply to ALL diagnostic fixes (including the OpenAI-suggested ones), or only the deterministic regex-based rules (Tier-1)? OpenAI suggestions are probabilistic and could theoretically make things worse.
+
+> [!IMPORTANT]
+> **Retry limit:** Is 2 auto-retries (3 total attempts) acceptable, or do you want a different cap?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- `npm run build` to verify zero TypeScript compilation errors.
+- Deploy a known-broken repo (e.g., one with peer dep conflicts) and verify the autonomous retry loop fixes it without user intervention.
+
+### Manual Verification
+- Deploy a Vite React app and confirm it auto-detects `vite build` + `serve -s dist`.
+- Deploy a repo with `yarn.lock` and confirm it uses `yarn install` instead of `npm install`.
+- Deploy a repo with 50+ TypeScript errors and confirm the diagnostic engine catches it.

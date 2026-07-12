@@ -1,3 +1,12 @@
+export type DeployType = 'FRONTEND_SPA' | 'BACKEND_API' | 'FULLSTACK' | 'CUSTOM_CONTAINER';
+export type PackageManager = 'npm' | 'yarn' | 'pnpm';
+
+export interface PreflightFix {
+  fix: 'SET_INSTALL_CMD' | 'SET_BUILD_CMD' | 'SET_START_CMD' | 'SET_RUNTIME' | 'SET_PACKAGE_MANAGER';
+  value: string;
+  reason: string;
+}
+
 export interface ActiveDetection {
   runtime: string;
   framework: string;
@@ -6,6 +15,10 @@ export interface ActiveDetection {
   warnings: string[];
   computeCostMonthly: number;
   computeSpec: string;
+  // v2: New fields (all optional to preserve backward compat)
+  deployType?: DeployType;
+  packageManager?: PackageManager;
+  preflightFixes?: PreflightFix[];
 }
 
 export interface IDetector {
@@ -21,6 +34,8 @@ export interface PreflightReport {
     runtime: string;
     framework: string;
     port: number;
+    deployType?: DeployType;
+    packageManager?: PackageManager;
   };
   environment: {
     requiredVars: string[];
@@ -33,4 +48,5 @@ export interface PreflightReport {
     infrastructureMonthly: number;
     totalMonthly: number;
   };
+  preflightFixes?: PreflightFix[];
 }
