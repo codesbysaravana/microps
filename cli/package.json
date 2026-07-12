@@ -1,0 +1,19 @@
+{
+  "name": "microps-cli",
+  "version": "1.1.1",
+  "description": "Official CLI for MicrOps",
+  "main": "bin/microps.js",
+  "bin": {
+    "microps": "./bin/microps.js"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "start": "node ./bin/microps.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.6"
+  }
+}
