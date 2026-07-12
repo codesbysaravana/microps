@@ -295,6 +295,93 @@ export async function analyzeBuildFailure(rawLogs: string, jobId: string, runtim
       },
     };
   }
+  // Rule 13: Go Compilation Error
+  if (/build failed|syntax error|undefined:|cannot find package/i.test(logs) && runtime === 'Go') {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'GO_COMPILATION_ERROR',
+      jobId,
+      failureTitle: '❌ Build failed: Go Compilation Error.',
+      rootCause: 'The Go compiler encountered a syntax error or missing package dependency.',
+      detected: 'Go build failure',
+      probability: '95%',
+      fixAction: {
+        label: 'Run go mod tidy & rebuild',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'go mod tidy && go build -o main .',
+        },
+      },
+    };
+  }
+
+  // Rule 14: Maven Build Failure
+  if (/\[ERROR\].*BUILD FAILURE/i.test(logs) && /mvn /i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'MAVEN_BUILD_FAIL',
+      jobId,
+      failureTitle: '❌ Build failed: Maven compilation error.',
+      rootCause: 'Maven encountered a syntax error, test failure, or missing dependency during the build phase.',
+      detected: 'Maven BUILD FAILURE',
+      probability: '96%',
+      fixAction: {
+        label: 'Rebuild without tests',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'mvn clean package -DskipTests',
+        },
+      },
+    };
+  }
+
+  // Rule 15: Gradle Build Failure
+  if (/BUILD FAILED in/i.test(logs) && /gradle/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'GRADLE_BUILD_FAIL',
+      jobId,
+      failureTitle: '❌ Build failed: Gradle compilation error.',
+      rootCause: 'Gradle encountered a syntax error, test failure, or missing dependency during the build phase.',
+      detected: 'Gradle BUILD FAILED',
+      probability: '96%',
+      fixAction: {
+        label: 'Rebuild without tests',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'SET_BUILD_CMD',
+        payload: {
+          actionType: 'SET_BUILD_CMD',
+          buildCommand: 'gradle build --no-daemon -x test',
+        },
+      },
+    };
+  }
+
+  // Rule 16: Python Dependency Install Failure
+  if (/ERROR: Could not find a version that satisfies the requirement/i.test(logs) || /pip.*failed with error code/i.test(logs)) {
+    return {
+      type: 'DIAGNOSTIC_REPORT',
+      ruleId: 'PYTHON_DEPENDENCY_ERROR',
+      jobId,
+      failureTitle: '❌ Build failed: Python dependency resolution error.',
+      rootCause: 'pip could not find a matching version for a requested package, or compilation of a native extension failed.',
+      detected: 'pip install failure',
+      probability: '95%',
+      fixAction: {
+        label: 'Upgrade pip & retry install',
+        actionEndpoint: '/api/v1/build/apply-fix',
+        actionType: 'PATCH_INSTALL_CMD',
+        payload: {
+          actionType: 'PATCH_INSTALL_CMD',
+          installCommand: 'pip install --upgrade pip setuptools wheel && pip install -r requirements.txt || pip install .',
+        },
+      },
+    };
+  }
 
   // Tier-2: AI Autonomous Diagnostic Agent (OpenAI LLM Call with JSON Schema structuring)
   const aiReport = await callOpenAiDiagnosticAgent(logs, jobId, runtime);
@@ -331,6 +418,7 @@ async function callOpenAiDiagnosticAgent(rawLogs: string, jobId: string, runtime
 
   const systemPrompt = `You are MicrOps AI Autonomous Debugging Engine, a Principal Senior DevOps Container Architect.
 Your task is to analyze raw container build failure logs from an automated cloud CI/CD deployment pipeline and prescribe a deterministic 1-click self-healing remediation.
+You are equipped to handle pipelines for Node.js, Python, Java (Maven/Gradle), and Go.
 
 You MUST respond ONLY with a valid JSON object matching this exact schema:
 {
@@ -340,14 +428,14 @@ You MUST respond ONLY with a valid JSON object matching this exact schema:
   "detected": "<Key error signature or runtime environment issue detected>",
   "probability": "<e.g., 96%>",
   "fixAction": {
-    "label": "<Human readable 1-click action label, e.g., 'Use Yarn install & build'>",
+    "label": "<Human readable 1-click action label, e.g., 'Use Yarn install & build' or 'Run pip install'>",
     "actionEndpoint": "/api/v1/build/apply-fix",
     "actionType": "<MUST be one of: UPGRADE_RUNTIME, PATCH_INSTALL_CMD, SET_BUILD_CMD, INCREASE_NODE_OPTIONS, SET_ENV_PORT>",
     "payload": {
       "actionType": "<Same as fixAction.actionType>",
-      "installCommand": "<Optional override install command, e.g., 'yarn install --ignore-engines' or 'npm install --force'>",
-      "buildCommand": "<Optional override build command, e.g., 'yarn build' or 'echo \"No build step required\"'>",
-      "targetValue": "<Optional runtime target, e.g., 'node:20-alpine'>"
+      "installCommand": "<Optional override install command, e.g., 'yarn install --ignore-engines', 'pip install .', 'go mod download'>",
+      "buildCommand": "<Optional override build command, e.g., 'yarn build', 'gradle build', 'go build'>",
+      "targetValue": "<Optional runtime target, e.g., 'node:20-alpine', 'python:3.11-slim'>"
     }
   }
 }`;

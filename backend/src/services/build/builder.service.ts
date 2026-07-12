@@ -178,6 +178,50 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     chmod +x /app/start.sh
 CMD ["/app/start.sh"]
 DOCKEREOF
+  elif [ -f pyproject.toml ]; then
+    cat << 'DOCKEREOF' > Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir .
+ENV PORT=3000
+EXPOSE 3000
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'if [ -f main.py ]; then exec uvicorn main:app --host 0.0.0.0 --port 3000; elif [ -f app.py ]; then exec uvicorn app:app --host 0.0.0.0 --port 3000; elif [ -f manage.py ]; then exec python manage.py runserver 0.0.0.0:3000; else exec python -m http.server 3000; fi' >> /app/start.sh && \
+    chmod +x /app/start.sh
+CMD ["/app/start.sh"]
+DOCKEREOF
+  elif [ -f Pipfile ]; then
+    cat << 'DOCKEREOF' > Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+RUN pip install pipenv
+COPY Pipfile Pipfile.lock* ./
+RUN pipenv install --system --deploy
+COPY . .
+ENV PORT=3000
+EXPOSE 3000
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'if [ -f main.py ]; then exec uvicorn main:app --host 0.0.0.0 --port 3000; elif [ -f app.py ]; then exec uvicorn app:app --host 0.0.0.0 --port 3000; elif [ -f manage.py ]; then exec python manage.py runserver 0.0.0.0:3000; else exec python -m http.server 3000; fi' >> /app/start.sh && \
+    chmod +x /app/start.sh
+CMD ["/app/start.sh"]
+DOCKEREOF
+  elif [ -f go.mod ]; then
+    cat << 'DOCKEREOF' > Dockerfile
+FROM golang:1.21-alpine AS build
+WORKDIR /app
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+RUN go build -o main .
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=build /app/main .
+ENV PORT=3000
+EXPOSE 3000
+CMD ["./main"]
+DOCKEREOF
   elif [ -f pom.xml ]; then
     cat << 'DOCKEREOF' > Dockerfile
 FROM maven:3.9-eclipse-temurin-17 AS build
@@ -190,6 +234,20 @@ RUN mvn package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+ENV SERVER_PORT=3000
+EXPOSE 3000
+ENTRYPOINT ["java", "-Dserver.port=3000", "-jar", "app.jar"]
+DOCKEREOF
+  elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then
+    cat << 'DOCKEREOF' > Dockerfile
+FROM gradle:8.2-jdk17 AS build
+WORKDIR /app
+COPY . .
+RUN gradle build --no-daemon -x test
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/build/libs/*.jar app.jar
 ENV SERVER_PORT=3000
 EXPOSE 3000
 ENTRYPOINT ["java", "-Dserver.port=3000", "-jar", "app.jar"]
