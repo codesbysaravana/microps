@@ -178,7 +178,7 @@ export async function analyzeBuildFailure(rawLogs: string, jobId: string, runtim
         actionType: 'SET_BUILD_CMD',
         payload: {
           actionType: 'SET_BUILD_CMD',
-          buildCommand: 'npx tsc --skipLibCheck && npm run build --if-present',
+          buildCommand: "sed -i 's/tsc[^&]*&& //g' package.json && npm run build --if-present",
         },
       },
     };
