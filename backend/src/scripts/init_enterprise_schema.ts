@@ -16,6 +16,8 @@ export const runEnterpriseMigrationAndSeed = async () => {
         github_id VARCHAR(255) UNIQUE,
         github_username VARCHAR(255),
         github_access_token TEXT,
+        google_id VARCHAR(255) UNIQUE,
+        google_access_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -23,6 +25,10 @@ export const runEnterpriseMigrationAndSeed = async () => {
 
     // Ensure password_hash is nullable for existing DBs
     await client.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;`);
+    
+    // Ensure google fields exist for existing DBs
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;`);
 
     // 2. Multi-Tenant Organizations
     console.log('📦 Creating organizations table...');

@@ -7,6 +7,7 @@ import organizationRoutes from './organization.routes';
 import billingRoutes from './billing.routes';
 import dashboardRoutes from './dashboard.routes';
 import { githubRoutes } from './github.routes';
+import { googleRoutes } from './google.routes';
 
 const router = Router();
 
@@ -42,5 +43,8 @@ router.use('/dashboard', dashboardRoutes);
 
 // GitHub BYOC integration endpoints
 router.use('/github', githubRoutes);
+
+// Google OAuth integration endpoints
+router.use('/google', googleRoutes);
 
 export default router;
