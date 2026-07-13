@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="frontend/public/logo.png" width="300" alt="MicrOps Logo" />
-</p>
-
-# 🚀 MicrOps — Autonomous No-Code Cloud DevOps & Serverless Container Orchestrator
+# <img src="frontend/public/logo.png" width="36" alt="MicrOps Logo" align="top" /> MicrOps — Autonomous No-Code Cloud DevOps & Serverless Container Orchestrator
 
 [![Production Status: Verified](https://img.shields.io/badge/Production%20Status-Verified%20Live-brightgreen?style=for-the-badge)](http://13.238.226.195)
 [![AWS Region: ap-southeast-2](https://img.shields.io/badge/AWS%20Region-Sydney%20%28ap--southeast--2%29-ff9900?style=for-the-badge&logo=amazon-aws)](https://aws.amazon.com/)
