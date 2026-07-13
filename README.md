@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo.png" width="300" alt="MicrOps Logo" />
+</p>
+
 # 🚀 MicrOps — Autonomous No-Code Cloud DevOps & Serverless Container Orchestrator
 
 [![Production Status: Verified](https://img.shields.io/badge/Production%20Status-Verified%20Live-brightgreen?style=for-the-badge)](http://13.238.226.195)
