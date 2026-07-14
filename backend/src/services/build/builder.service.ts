@@ -162,7 +162,7 @@ COPY . .
 RUN ${nodeBuild}
 EXPOSE 3000
 RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'if node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.start?0:1)" 2>/dev/null; then exec npm start; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.preview?0:1)" 2>/dev/null; then exec npm run preview -- --host 0.0.0.0 --port 3000; elif [ -d dist ]; then exec serve -s dist -l 3000; elif [ -d build ]; then exec serve -s build -l 3000; elif [ -d out ]; then exec serve -s out -l 3000; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.dev?0:1)" 2>/dev/null; then exec npm run dev -- --host 0.0.0.0 --port 3000; else exec node server.js || exec node index.js; fi' >> /app/start.sh && \
+    echo 'if node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.start?0:1)" 2>/dev/null; then exec npm start; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.preview?0:1)" 2>/dev/null; then exec npm run preview -- --host 0.0.0.0 --port 3000; elif [ -d dist ]; then exec serve -s dist -l 3000; elif [ -d build ]; then exec serve -s build -l 3000; elif [ -d out ]; then exec serve -s out -l 3000; elif node -e "const s=require(\"./package.json\").scripts||{}; process.exit(s.dev?0:1)" 2>/dev/null; then exec npm run dev -- --host 0.0.0.0 --port 3000; elif [ -f server.js ]; then exec node server.js; elif [ -f index.js ]; then exec node index.js; else echo "Falling back to static root serving (Vercel-style)..."; exec serve -s . -l 3000; fi' >> /app/start.sh && \
     chmod +x /app/start.sh
 CMD ["/app/start.sh"]
 DOCKEREOF
