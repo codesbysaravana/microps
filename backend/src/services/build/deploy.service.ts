@@ -17,6 +17,7 @@ import {
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import { buildBus } from '../../utils/eventBus';
 import { decryptAESnGCM, EncryptedEnvPayload } from '../../utils/encryptEnv';
+import { generateTargetGroupName, generateServiceName, generateTaskFamilyName } from '../../utils/naming';
 import { updateProjectLiveUrlDB, updateProjectEcsMetadata } from '../../repository/project.repository';
 import { userRepository } from '../../repository/user.repository';
 import { emailService } from '../email.service';
@@ -119,12 +120,10 @@ export const deployServiceECS = async (
   encryptedGCM: EncryptedEnvPayload | null,
   projectId?: number
 ): Promise<boolean> => {
-  // FIX #2: Deterministic target group name — one per project, reused across deploys
-  const shortProject = projectName.substring(0, 14);
-  const targetGroupName = `tg-u${userId}-${shortProject}`;
-
-  const familyName = `tenant-${userId}-${projectName}-task`;
-  const serviceName = `tenant-${userId}-${projectName}-service`;
+  // FIX #2 (v2): Collision-resistant deterministic naming using SHA-256 hash
+  const targetGroupName = generateTargetGroupName(userId, projectName);
+  const familyName = generateTaskFamilyName(userId, projectName);
+  const serviceName = generateServiceName(userId, projectName);
   const tenantDomain = `tenant-${userId}-${projectName}.${BASE_DOMAIN}`;
   const liveUrl = `${PROTOCOL}://${tenantDomain}`;
 
